@@ -1,6 +1,3 @@
-[submodule "data/--force"]
-	path = data/--force
-	url = https://huggingface.co/datasets/roneneldan/TinyStories
 [submodule "data/TinyStories"]
 	path = data/TinyStories
 	url = https://huggingface.co/datasets/roneneldan/TinyStories
