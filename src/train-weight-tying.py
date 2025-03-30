@@ -29,7 +29,8 @@ GPT_CONFIG_124M = {
     "n_heads": 12,
     "n_layers": 12,
     "drop_rate": 0.1,
-    "qkv_bias": False
+    "qkv_bias": False,
+    "weight_tying": True
 }
 
 
@@ -184,7 +185,7 @@ trainer = L.Trainer(max_epochs=1, enable_progress_bar=True)
 trainer.fit(model=litmodel, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 
-# In[12]:
+# In[15]:
 
 
 import matplotlib.pyplot as plt
@@ -192,6 +193,7 @@ import matplotlib.pyplot as plt
 fig, ax1 = plt.subplots(figsize=(10, 6))
 
 ax1.plot(litmodel.train_losses)
+ax1.set_ylim(0, 20)
 
 ax2 = ax1.twinx()
 ax2.plot(litmodel.learning_rates, color="tab:red")

@@ -25,11 +25,12 @@ import lightning as L
 GPT_CONFIG_124M = {
     "vocab_size": 50257,
     "context_length": 256,
-    "emb_dim": 768,
-    "n_heads": 12,
-    "n_layers": 12,
+    "emb_dim": 256,
+    "n_heads": 4,
+    "n_layers": 4,
     "drop_rate": 0.1,
-    "qkv_bias": False
+    "qkv_bias": False,
+    "weight_tying": True
 }
 
 
@@ -115,7 +116,7 @@ from components.data import create_dataloader_v1
 # In[7]:
 
 
-dataset_scale = 1000
+dataset_scale = 100
 
 
 # In[8]:
@@ -129,7 +130,7 @@ train_len = len(train_text)
 train_text = train_text[:train_len // dataset_scale]
 train_loader = create_dataloader_v1(
     train_text,
-    batch_size=2,
+    batch_size=32,
     max_length=GPT_CONFIG_124M["context_length"],
     stride=GPT_CONFIG_124M["context_length"],
     drop_last=True,
@@ -149,7 +150,7 @@ val_len = len(val_text)
 val_text = val_text[:val_len // dataset_scale]
 val_loader = create_dataloader_v1(
     val_text,
-    batch_size=2,
+    batch_size=32,
     max_length=GPT_CONFIG_124M["context_length"],
     stride=GPT_CONFIG_124M["context_length"],
     drop_last=False,
@@ -184,7 +185,7 @@ trainer = L.Trainer(max_epochs=1, enable_progress_bar=True)
 trainer.fit(model=litmodel, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 
-# In[12]:
+# In[ ]:
 
 
 import matplotlib.pyplot as plt

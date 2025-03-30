@@ -25,9 +25,9 @@ import lightning as L
 GPT_CONFIG_124M = {
     "vocab_size": 50257,
     "context_length": 256,
-    "emb_dim": 768,
-    "n_heads": 12,
-    "n_layers": 12,
+    "emb_dim": 256,
+    "n_heads": 4,
+    "n_layers": 4,
     "drop_rate": 0.1,
     "qkv_bias": False
 }
@@ -112,13 +112,13 @@ class LitGPTModel(L.LightningModule):
 from components.data import create_dataloader_v1
 
 
-# In[7]:
+# In[13]:
 
 
-dataset_scale = 1000
+dataset_scale = 100
 
 
-# In[8]:
+# In[14]:
 
 
 train_file = "../data/TinyStories/TinyStoriesV2-GPT4-train.txt"
@@ -129,7 +129,7 @@ train_len = len(train_text)
 train_text = train_text[:train_len // dataset_scale]
 train_loader = create_dataloader_v1(
     train_text,
-    batch_size=2,
+    batch_size=32,
     max_length=GPT_CONFIG_124M["context_length"],
     stride=GPT_CONFIG_124M["context_length"],
     drop_last=True,
@@ -138,7 +138,7 @@ train_loader = create_dataloader_v1(
 )
 
 
-# In[9]:
+# In[15]:
 
 
 val_file = "../data/TinyStories/TinyStoriesV2-GPT4-valid.txt"
@@ -149,7 +149,7 @@ val_len = len(val_text)
 val_text = val_text[:val_len // dataset_scale]
 val_loader = create_dataloader_v1(
     val_text,
-    batch_size=2,
+    batch_size=32,
     max_length=GPT_CONFIG_124M["context_length"],
     stride=GPT_CONFIG_124M["context_length"],
     drop_last=False,
@@ -170,21 +170,21 @@ val_loader = create_dataloader_v1(
 
 
 
-# In[10]:
+# In[16]:
 
 
 model = GPTModel(GPT_CONFIG_124M)
 litmodel = LitGPTModel(model)
 
 
-# In[11]:
+# In[17]:
 
 
 trainer = L.Trainer(max_epochs=1, enable_progress_bar=True)
 trainer.fit(model=litmodel, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
 
-# In[12]:
+# In[18]:
 
 
 import matplotlib.pyplot as plt
