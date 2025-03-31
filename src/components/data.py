@@ -7,7 +7,7 @@
 
 
 
-# In[1]:
+# In[30]:
 
 
 import torch
@@ -32,7 +32,7 @@ class GPTDatasetV1(Dataset):
         return self.input_ids[idx], self.target_ids[idx]
 
 
-# In[2]:
+# In[31]:
 
 
 import tiktoken
@@ -104,6 +104,89 @@ def create_dataloader_v2(txt, batch_size=4, max_length=256, stride=128, shuffle=
     )
 
     return dataloader
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[20]:
+
+
+import torch
+from torch.utils.data import Dataset, DataLoader
+
+# implements splitting text based on endoftext token
+# possible improvements:
+#  sequence packing + accompanying mask
+#  implement sliding window chunking for text longer than max_length
+class GPTDatasetV3(Dataset):
+    def __init__(self, txt, tokenizer, max_length, stride, split_on="<|endoftext|>"):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.endoftext_id = tokenizer.encode(split_on).ids[0]
+
+        self.text_split = txt.split(split_on)
+        
+
+        # tokens_split = [tokenizer.encode(text).ids for text in self.text_split]
+        # self.max_tokens_length = max(len(t) for t in tokens_split)
+        # should be more memory efficient way of getting max length
+        # instead of holding all tokens in memory,
+        # just hold a single set of tokens in memory at a time
+        self.max_tokens_length = 0
+        for text in self.text_split:
+            self.max_tokens_length = max(len(tokenizer.encode(text).ids), self.max_tokens_length)
+            
+
+    def _pad_tokens_torch(self, tokens, max_length, pad_token_id):
+        tensor = torch.full((max_length,), pad_token_id, dtype=torch.long)
+        tokens = torch.tensor(tokens[:max_length])
+        tensor[:len(tokens)] = tokens
+        return tensor
+
+    def __len__(self):
+        return len(self.text_split)
+
+    def __getitem__(self, idx):
+        max_length = min(self.max_length, self.max_tokens_length)
+        text = self.text_split[idx]
+        tokens = self.tokenizer.encode(text).ids
+        tokens_padded = self._pad_tokens_torch(tokens, max_length+1, self.endoftext_id)
+        return tokens_padded[:max_length], tokens_padded[1:max_length + 1]
+
+
+# In[21]:
+
+
+from tokenizers import Tokenizer
+
+def create_dataloader_v3(txt, batch_size=4, max_length=256, stride=128, shuffle=True, drop_last=True, num_workers=0):
+    tokenizer = Tokenizer.from_file("./TinyStories_tokenizer.json")
+    dataset = GPTDatasetV3(txt, tokenizer, max_length, stride)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers
+    )
+
+    return dataloader
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
