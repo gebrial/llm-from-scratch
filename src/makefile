@@ -8,11 +8,14 @@ NOTEBOOKS := $(filter-out .ipynb_checkpoints%, $(NOTEBOOKS))
 PY_FILES := $(NOTEBOOKS:.ipynb=.py)
 
 # default target - convert all notebooks to python scripts
-all: $(PY_FILES)
+all: $(PY_FILES) README.md 
 
 # rule to convert a notebook to a python script
 %.py: %.ipynb
 	jupyter nbconvert --to script "$<"
+
+README.md: README.ipynb
+	jupyter nbconvert --to markdown README.ipynb
 
 clean: rm -f $(PY_FILES)
 

@@ -10,9 +10,3 @@
 # * try pre-training on simple wikipedia dataset
 # * use torch.compile to increase training speed
 # * modify accuracy function to not count "endoftoken" tokens
-
-# In[ ]:
-
-
-
-
