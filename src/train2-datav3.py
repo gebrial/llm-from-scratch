@@ -110,7 +110,7 @@ class LitGPTModel(L.LightningModule):
         optimizer = torch.optim.AdamW(
             self.parameters(), lr=1e-3, weight_decay=0.1
         )
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=1000)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=100)
         lr_scheduler_config = {
             "scheduler": scheduler,
             "interval": "step",
@@ -132,26 +132,41 @@ class LitGPTModel(L.LightningModule):
 # In[6]:
 
 
-from components.data import create_dataloader_v2
+from components.data import create_dataloader_v3
 
 
 # In[7]:
 
 
 trainer_config = {
-    "dataset_scale": 10,
+    "dataset_scale": 300,
     "batch_size": 32
 }
-trainer_config["grad_batches"] = 128 // trainer_config["batch_size"]
+trainer_config["grad_batches"] = 1
 
 
 # In[8]:
 
 
-get_ipython().run_cell_magic('time', '', '\ntrain_file = "../data/TinyStories/TinyStoriesV2-GPT4-train.txt"\nwith open(train_file, "r", encoding="utf-8") as f:\n    train_text = f.read()\n\ntrain_len = len(train_text)\ntrain_text = train_text[:train_len // trainer_config["dataset_scale"]]\ntrain_loader = create_dataloader_v2(\n    train_text,\n    batch_size=trainer_config["batch_size"],\n    max_length=GPT_CONFIG_124M["context_length"],\n    stride=GPT_CONFIG_124M["context_length"],\n    drop_last=True,\n    shuffle=True,\n    num_workers=11\n)\n')
+def create_dataloader(text, train=True):
+    return create_dataloader_v3(
+        text,
+        batch_size=trainer_config["batch_size"],
+        max_length=GPT_CONFIG_124M["context_length"],
+        stride=GPT_CONFIG_124M["context_length"],
+        drop_last=train,
+        shuffle=train,
+        num_workers=11
+    )
 
 
 # In[9]:
+
+
+get_ipython().run_cell_magic('time', '', '\ntrain_file = "../data/TinyStories/TinyStoriesV2-GPT4-train.txt"\nwith open(train_file, "r", encoding="utf-8") as f:\n    train_text = f.read()\n\ntrain_len = len(train_text)\ntrain_text = train_text[:train_len // trainer_config["dataset_scale"]]\ntrain_loader = create_dataloader(train_text)\n# train_loader = create_dataloader_v2(\n#     train_text,\n#     batch_size=trainer_config["batch_size"],\n#     max_length=GPT_CONFIG_124M["context_length"],\n#     stride=GPT_CONFIG_124M["context_length"],\n#     drop_last=True,\n#     shuffle=True,\n#     num_workers=11\n# )\n')
+
+
+# In[10]:
 
 
 val_file = "../data/TinyStories/TinyStoriesV2-GPT4-valid.txt"
@@ -160,15 +175,16 @@ with open(val_file, "r", encoding="utf-8") as f:
 
 val_len = len(val_text)
 val_text = val_text[:val_len // trainer_config["dataset_scale"]]
-val_loader = create_dataloader_v2(
-    val_text,
-    batch_size=trainer_config["batch_size"],
-    max_length=GPT_CONFIG_124M["context_length"],
-    stride=GPT_CONFIG_124M["context_length"],
-    drop_last=False,
-    shuffle=False,
-    num_workers=11
-)
+val_loader = create_dataloader(val_text, train=False)
+# val_loader = create_dataloader_v2(
+#     val_text,
+#     batch_size=trainer_config["batch_size"],
+#     max_length=GPT_CONFIG_124M["context_length"],
+#     stride=GPT_CONFIG_124M["context_length"],
+#     drop_last=False,
+#     shuffle=False,
+#     num_workers=11
+# )
 
 
 # In[ ]:
@@ -177,20 +193,20 @@ val_loader = create_dataloader_v2(
 
 
 
-# In[10]:
+# In[11]:
 
 
 model = GPTModel(GPT_CONFIG_124M)
 litmodel = LitGPTModel(model)
 
 
-# In[11]:
+# In[12]:
 
 
 get_ipython().run_cell_magic('time', '', '\ntrainer = L.Trainer(max_epochs=1, enable_progress_bar=True, accumulate_grad_batches=trainer_config["grad_batches"])\ntrainer.fit(model=litmodel, train_dataloaders=train_loader, val_dataloaders=val_loader)\n')
 
 
-# In[12]:
+# In[13]:
 
 
 import matplotlib.pyplot as plt
