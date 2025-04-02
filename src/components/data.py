@@ -118,7 +118,7 @@ def create_dataloader_v2(txt, batch_size=4, max_length=256, stride=128, shuffle=
 
 
 
-# In[20]:
+# In[2]:
 
 
 import torch
@@ -154,7 +154,7 @@ class GPTDatasetV3(Dataset):
         return tokens_padded[:self.max_length], tokens_padded[1:self.max_length + 1]
 
 
-# In[21]:
+# In[1]:
 
 
 from tokenizers import Tokenizer
@@ -167,7 +167,10 @@ def create_dataloader_v3(txt, batch_size=4, max_length=256, stride=128, shuffle=
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
-        num_workers=num_workers
+        num_workers=num_workers,
+        persistent_workers=True,
+        pin_memory=True,
+        prefetch_factor=4
     )
 
     return dataloader

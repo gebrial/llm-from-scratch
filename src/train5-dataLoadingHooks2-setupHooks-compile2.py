@@ -94,7 +94,7 @@ torch.set_float32_matmul_precision('medium')
 
 
 trainer_config = {
-    "dataset_scale": 300,
+    "dataset_scale": 3,
     "batch_size": 32 if "laptop" in hostname else 16,
     "epochs": 1,
     "train_file_loc": "../data/TinyStories/TinyStoriesV2-GPT4-train.txt",
@@ -365,19 +365,19 @@ litmodel.model.to(device)
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
 
 
-# In[ ]:
+# In[18]:
 
 
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
 
 
-# In[ ]:
+# In[19]:
 
 
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
 
 
-# In[ ]:
+# In[20]:
 
 
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')

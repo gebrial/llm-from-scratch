@@ -53,10 +53,10 @@ GPT_CONFIG_30M = {
 
 GPT_CONFIG_60M = {
     "vocab_size": 30002,
-    "context_length": 512,
-    "emb_dim": 512,
-    "n_heads": 8,
-    "n_layers": 8,
+    "context_length": 128,
+    "emb_dim": 128,
+    "n_heads": 2,
+    "n_layers": 2,
     "drop_rate": 0.0,
     "qkv_bias": False,
     "weight_tying": False,
@@ -94,14 +94,14 @@ torch.set_float32_matmul_precision('medium')
 
 
 trainer_config = {
-    "dataset_scale": 300,
+    "dataset_scale": 1,
     "batch_size": 32 if "laptop" in hostname else 16,
     "epochs": 1,
     "train_file_loc": "../data/TinyStories/TinyStoriesV2-GPT4-train.txt",
     "valid_file_loc": "../data/TinyStories/TinyStoriesV2-GPT4-valid.txt",
     "num_workers": 11 if "laptop" in hostname else 23,
     "max_lr": 1e-3,
-    "compile": "laptop" not in hostname
+    "compile": False # "laptop" not in hostname
 }
 trainer_config["grad_batches"] = 256 // trainer_config["batch_size"]
 
@@ -119,6 +119,10 @@ from components.gptmodel import GPTModel_v2
 from torch.optim.lr_scheduler import OneCycleLR
 from components.data import create_dataloader_v3
 import lightning as L
+import gc
+import objgraph
+from pympler import asizeof, muppy, summary
+
 
 class LitGPTModel(L.LightningModule):
     def __init__(self, trainer_config, gpt_config):
@@ -140,20 +144,29 @@ class LitGPTModel(L.LightningModule):
         return total_matching / total_numel
 
     def training_step(self, batch, batch_idx):
+        if self.batch_step % 1700 == 0:
+            gc.collect()
+            # objgraph.show_most_common_types(limit=20)  
+
+            # Get all objects in memory
+            # all_objects = muppy.get_objects()            
+            # Show top consumers
+            # summary.print_(summary.summarize(all_objects), limit=10)
+
         self.batch_step += 1
         x, y = batch
         logits = self.model(x)
 
-        accuracy = self._accuracy(logits, y)
-        self.log("accuracy", accuracy, prog_bar=True, on_step=True, on_epoch=True)
-        self.train_accuracy.append(accuracy)
+        # accuracy = self._accuracy(logits, y)
+        # self.log("accuracy", accuracy, prog_bar=True, on_step=True, on_epoch=True)
+        # self.train_accuracy.append(accuracy)
 
         loss = self.loss(logits, y)
-        self.log("loss", loss, prog_bar=True, on_step=True, on_epoch=True)
-        self.train_losses.append(loss.item())
+        # self.log("loss", loss, prog_bar=True, on_step=True, on_epoch=True)
+        # self.train_losses.append(loss.item())
 
-        current_lr = self.optimizers().param_groups[0]["lr"]
-        self.learning_rates.append(current_lr)
+        # current_lr = self.optimizers().param_groups[0]["lr"]
+        # self.learning_rates.append(current_lr)
 
         return loss
 
@@ -236,6 +249,7 @@ class LitGPTModel(L.LightningModule):
             self.train_text,
             train_loader=True
         )
+        del self.train_text
         return train_loader
 
     def val_dataloader(self):
@@ -263,7 +277,7 @@ litmodel = LitGPTModel(
 # In[9]:
 
 
-get_ipython().run_cell_magic('time', '', '\ntrainer = L.Trainer(\n    max_epochs=trainer_config["epochs"],\n    enable_progress_bar=True,\n    accumulate_grad_batches=trainer_config["grad_batches"]\n)\ntrainer.fit(model=litmodel)\n')
+get_ipython().run_cell_magic('time', '', '%load_ext memory_profiler\n\ntrainer = L.Trainer(\n    max_epochs=trainer_config["epochs"],\n    enable_progress_bar=True,\n    accumulate_grad_batches=trainer_config["grad_batches"]\n)\n%memit trainer.fit(model=litmodel)\n')
 
 
 # In[10]:
@@ -365,19 +379,19 @@ litmodel.model.to(device)
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
 
 
-# In[ ]:
+# In[18]:
 
 
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
 
 
-# In[ ]:
+# In[19]:
 
 
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
 
 
-# In[ ]:
+# In[20]:
 
 
 get_ipython().run_cell_magic('time', '', 'litmodel.eval()\nstarting_text = "Tom and Jane are friends. One day, Jane goes to Tom’s house. Tom has a big pot of soup. He wants to share it with Jane. “Jane, do you want some soup?” Tom asks. “Yes, please. It looks yummy,” Jane says. Tom pours some soup into two bowls. He gives one bowl to Jane. Jane takes a spoonful of soup, but then she makes a face. The soup is"\ntext = generate_text(litmodel.model, tokenizer, starting_text, 512, device, topk=3, temperature=1)\nprint("text: ", text)\n')
