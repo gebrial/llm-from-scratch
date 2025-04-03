@@ -154,7 +154,7 @@ class GPTDatasetV3(Dataset):
         return tokens_padded[:self.max_length], tokens_padded[1:self.max_length + 1]
 
 
-# In[1]:
+# In[ ]:
 
 
 from tokenizers import Tokenizer
@@ -168,24 +168,12 @@ def create_dataloader_v3(txt, batch_size=4, max_length=256, stride=128, shuffle=
         shuffle=shuffle,
         drop_last=drop_last,
         num_workers=num_workers,
-        persistent_workers=True,
+        persistent_workers=True if num_workers > 0 else False,
         pin_memory=True,
-        prefetch_factor=4
+        prefetch_factor=4 if num_workers > 0 else None
     )
 
     return dataloader
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
