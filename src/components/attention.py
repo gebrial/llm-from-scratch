@@ -96,6 +96,8 @@ class MultiHeadAttention(nn.Module):
 import torch
 import torch.nn as nn
 
+
+# this version uses the built-in scaled dot product attention
 class MultiHeadAttention_v2(nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
         super().__init__()
@@ -147,12 +149,14 @@ class MultiHeadAttention_v2(nn.Module):
         return context_vec
 
 
-# In[2]:
+# In[1]:
 
 
 import torch
 import torch.nn as nn
 
+# this version uses the built-in scaled dot product attention
+# and uses a mask
 class MultiHeadAttention_v3(nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
         super().__init__()
@@ -211,6 +215,89 @@ class MultiHeadAttention_v3(nn.Module):
 
 
 
+
+
+# In[215]:
+
+
+# small sdpa test
+
+def torch_sdpa(keys, queries, values, mask=None, is_causal=False):
+    b, num_heads, num_tokens, head_dim = keys.shape
+
+    if mask is not None:
+        mask = mask.view(b, 1, num_tokens, num_tokens)
+
+    attn_weights = torch.nn.functional.scaled_dot_product_attention(
+        queries,
+        keys,
+        values,
+        attn_mask=mask,
+        is_causal=is_causal,
+    )
+    return attn_weights
+
+def custom_sdpa(keys, queries, values, mask=None, is_causal=False):
+    b, num_heads, num_tokens, head_dim = keys.shape
+
+    if is_causal:
+        causal_mask = torch.triu(torch.ones(num_tokens, num_tokens), diagonal=1)
+        causal_mask = causal_mask.view(1, 1, num_tokens, num_tokens).expand(1, 1, -1, -1)
+        # convert to bool
+        causal_mask = causal_mask.bool()
+        # print(causal_mask)
+
+    attn_scores = queries @ keys.transpose(2, 3)
+    attn_scores = attn_scores / head_dim**0.5
+    if is_causal:
+        attn_scores.masked_fill_(causal_mask, -torch.inf)
+    if mask is not None:
+        attn_scores.masked_fill_(~mask, -torch.inf)
+    attn_weights = torch.softmax(attn_scores, dim=-1)
+
+    # this is necessary when all attn_scores for a specific value vector are -inf (due to masking)
+    attn_weights = torch.nan_to_num(attn_weights, nan=0.0)
+
+    context_vec = (attn_weights @ values)
+    # context_vec shape: (b, num_tokens, num_heads, head_dim)
+    context_vec = context_vec.contiguous().view(
+        b, num_heads, num_tokens, head_dim
+    )
+    return context_vec
+
+
+# In[ ]:
+
+
+# keys = torch.randn(2, 4, 5, 8)
+# queries = torch.randn(2, 4, 5, 8)
+# values = torch.randn(2, 4, 5, 8)
+
+# torch_output = torch_sdpa(keys, queries, values)
+# custom_output = custom_sdpa(keys, queries, values)
+# print("implementation matches without mask?", torch.allclose(torch_output, custom_output, atol=1e-6))
+
+# torch_causal_output = torch_sdpa(keys, queries, values, is_causal=True)
+# custom_causal_output = custom_sdpa(keys, queries, values, is_causal=True)
+# print("implementation matches with causal mask?", torch.allclose(torch_causal_output, custom_causal_output, atol=1e-6))
+
+# mask = torch.randint(0, 2, (2, 1, 5, 5)).bool()
+# # make sure no rows are all false
+# while True:
+#     if torch.any(mask.sum(dim=-1) == 0):
+#         mask = torch.randint(0, 2, (2, 1, 5, 5)).bool()
+#     else:
+#         break
+
+
+
+# torch_masked_output = torch_sdpa(keys, queries, values, mask=mask)
+# custom_masked_output = custom_sdpa(keys, queries, values, mask=mask)
+# print("implementation matches with mask?", torch.allclose(torch_masked_output, custom_masked_output, atol=1e-6))
+
+# torch_causal_masked_output = torch_sdpa(keys, queries, values, mask=mask, is_causal=True)
+# custom_causal_masked_output = custom_sdpa(keys, queries, values, mask=mask, is_causal=True)
+# print("implementation matches with causal mask?", torch.allclose(torch_causal_masked_output, custom_causal_masked_output, atol=1e-6))
 
 
 # In[ ]:

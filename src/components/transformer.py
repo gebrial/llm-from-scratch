@@ -138,5 +138,51 @@ class TransformerBlock_v3(nn.Module):
 # In[ ]:
 
 
+from .attention import MultiHeadAttention_v3
+import torch.nn as nn
+from .feedforward import FeedForwardGeGLU
+
+class TransformerBlock_GeGLU(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.att = MultiHeadAttention_v3(
+            d_in=cfg["emb_dim"],
+            d_out=cfg["emb_dim"],
+            context_length=cfg["context_length"],
+            num_heads=cfg["n_heads"],
+            dropout=cfg["drop_rate"],
+            qkv_bias=cfg["qkv_bias"]
+        )
+        self.ff = FeedForwardGeGLU(cfg)
+        self.norm1 = nn.LayerNorm(cfg["emb_dim"])
+        self.norm2 = nn.LayerNorm(cfg["emb_dim"])
+        self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
+
+    def forward(self, inp):
+        x, attn_mask = inp
+
+        shortcut = x
+        x = self.norm1(x)
+        x = self.att([x, attn_mask])
+        x = self.drop_shortcut(x)
+        x = x + shortcut
+
+        shortcut = x
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = self.drop_shortcut(x)
+        x = x + shortcut
+        return [x, attn_mask]
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
 
 
