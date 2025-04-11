@@ -214,6 +214,94 @@ class MultiHeadAttention_v3(nn.Module):
 # In[ ]:
 
 
+import torch
+import torch.nn as nn
+from torchtune.modules import RotaryPositionalEmbeddings 
+
+# this version uses the built-in scaled dot product attention
+# and uses a mask
+class MultiHeadAttention_RoPE(nn.Module):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+        super().__init__()
+        assert(d_out % num_heads == 0), \
+            "d_out must be divisble by num_heads"
+
+        self.d_out = d_out
+        self.num_heads = num_heads
+        self.head_dim = d_out // num_heads
+        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.out_proj = nn.Linear(d_out, d_out)
+        self.dropout = dropout
+        self.rope = RotaryPositionalEmbeddings(self.head_dim, context_length)
+        # self.register_buffer(
+        #     "mask",
+        #     torch.triu(torch.ones(context_length, context_length), diagonal=1)
+        # )
+
+
+    def forward(self, inp):
+        x, attn_mask, positions = inp
+        b, num_tokens, d_in = x.shape
+
+        keys = self.W_key(x)
+        queries = self.W_query(x)
+        values = self.W_value(x)
+
+        # implicity split the heads by adding a num_heads dimension
+        # then unroll last dimension from (d_out) -> (num_heads, head_dim)
+        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
+        values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
+
+        # apply RoPE
+        keys = self.rope(keys, input_pos=positions)
+        queries = self.rope(queries, input_pos=positions)
+
+        # transpose from (b, num_tokens, num_heads,  head_dim)
+        # to shape       (b, num_heads,  num_tokens, head_dim)
+        # print("keys shape", keys.shape)
+        # print("positions shape", positions.shape)
+        keys = keys.transpose(1, 2)
+        queries = queries.transpose(1, 2)
+        values = values.transpose(1, 2)
+
+
+        attn_mask = attn_mask.view(b, 1, num_tokens, num_tokens)
+
+        # make causal mask
+        causal_mask = torch.tril(
+            torch.ones(num_tokens, num_tokens)
+        ).to(x.device).bool()
+        # use and to combine masks
+        attn_mask = torch.logical_and(attn_mask, causal_mask)
+        attn_mask = attn_mask.view(b, 1, num_tokens, num_tokens)
+
+        context_vec = nn.functional.scaled_dot_product_attention(
+            queries, keys, values, attn_mask=attn_mask,
+            dropout_p=self.dropout if self.training else 0.0
+        )
+        # context_vec shape: (b, num_heads, num_tokens, head_dim)
+
+        context_vec = context_vec.transpose(1, 2)
+        # context_vec shape: (b, num_tokens, num_heads, head_dim)
+
+        # combine heads where d_out = num_heads * head_dim
+        # print("context_vec shape", context_vec.shape)
+        # print("num_tokens", num_tokens)
+        # print("b:", b)
+        context_vec = context_vec.contiguous().view(
+            b, num_tokens, -1
+        )
+
+        context_vec = self.out_proj(context_vec)
+        return context_vec
+
+
+# In[ ]:
+
+
 
 
 

@@ -11,8 +11,18 @@ This folder contains scripts testing and improving the gpt trainer (which is in 
 * ~~process text data into files with tokens and save metadata for use later (e.g., total tokens, total stories, etc.)~~ (using huggingface datasets makes this unnecessary)
 * use lower memory consumption data types for inputs (e.g., int16)
 * ~~confirm that attention masks are being used properly. API says error should be thrown when mask and is_causal=True is set, but no error is thrown.~~ (confirmed working. error is thrown when mem_efficient_sdp is disabled. otherwise it applies both causal masking AND the mask applied meaning the only values attended to are the ones that neither mask blocks)
-* try using triton for cross entropy loss calculation (heavy memory usage with torch implementation?)
-* configure positional encodings so that they match the story positions in the packed sequences
+* try using triton for cross entropy loss calculation (torchtune version shows no improvement over nn functional version in speed, cpu mem usage, or gpu mem usage) (couldn't figure out what the inputs for the apple cce implementation are supposed to be)
+* configure positional encodings so that they match the story positions in the packed sequences (implemented, need to train)
+* use smaller vocab to train faster with more layers (generated small vocab tokenizer, need to process text and train with it)
+* investigate batches where loss explodes
 
 ### resolve:
 * importing in scripts made from notebook in different folder
+
+### Tips:
+* use huggingface datasets to download/process datasets (very fast + memory efficient)
+* to properly save/load models using pytorch lightning, ensure that model is initialized in configure_model() function in LightningModule
+* compile model to reduce training time
+* in pytorch lightning, in the configure_model hook, make sure you check if self.has_attr("model") before configuring a new model, otherwise it will override any existing model (e.g., when loading in a model to a trainer just to validate)
+
+
