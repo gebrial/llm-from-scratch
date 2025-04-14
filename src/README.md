@@ -17,6 +17,7 @@ This folder contains scripts testing and improving the gpt trainer (which is in 
 * investigate batches where loss explodes
 * ~~clean dataset further (completely remove any stories with weird characters)~~ (done)
 * process inputs so that end of sequence doesn't predict beginning of next sequence (it should predict another endoftoken)
+* resubmit prompt completions with fixed version of text generator (this time don't skip special tokens like \n)
 
 ### resolve:
 * importing in scripts made from notebook in different folder

@@ -110,7 +110,7 @@ def generate_text_with_attn(model, tokenizer, start_text, max_length, device, eo
     return tokenizer.decode(tokens[0].tolist())
 
 
-# In[1]:
+# In[ ]:
 
 
 import torch
@@ -129,7 +129,8 @@ def generate_next_token_with_attn_positions(tokens, model, device, temperature=1
     logits = model([tokens, full_attn_mask, positions]) #todo implement positions
     logits = logits[0][-1] / temperature
     top_logits, top_pos = torch.topk(logits, topk)
-    next_token_pos = torch.multinomial(top_logits, num_samples=1)
+    top_softmax = torch.softmax(top_logits, dim=-1)
+    next_token_pos = torch.multinomial(top_softmax, num_samples=1)
     return top_pos[next_token_pos]
 
 def generate_tokens_with_attn_positions(model, start_tokens, max_length, device, eot_token, temperature=1, topk=1):
@@ -146,7 +147,7 @@ def generate_tokens_with_attn_positions(model, start_tokens, max_length, device,
         if next_token == eot_token:
             break
 
-    return final_tokens
+    return [final_tokens[0][:idx - 1]]
 
 
 def generate_text_with_attn_positions(model, tokenizer, start_text, max_length, device, eot_string="<|endoftext|>", temperature=1, topk=1, output_only=False):
@@ -161,9 +162,10 @@ def generate_text_with_attn_positions(model, tokenizer, start_text, max_length, 
     start_tokens_len = len(start_tokens)
     start_tokens = torch.tensor(start_tokens).to(device)
     tokens = generate_tokens_with_attn_positions(model, start_tokens, max_length, device, eot_token, temperature=temperature, topk=topk)
+
     if output_only:
-        return tokenizer.decode(tokens[0][start_tokens_len:].tolist())
-    return tokenizer.decode(tokens[0].tolist())
+        return tokenizer.decode(tokens[0][start_tokens_len:].tolist(), skip_special_tokens=False)
+    return tokenizer.decode(tokens[0].tolist(), skip_special_tokens=False)
 
 
 # In[ ]:
