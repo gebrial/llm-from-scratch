@@ -261,8 +261,6 @@ class MultiHeadAttention_RoPE(nn.Module):
 
         # transpose from (b, num_tokens, num_heads,  head_dim)
         # to shape       (b, num_heads,  num_tokens, head_dim)
-        # print("keys shape", keys.shape)
-        # print("positions shape", positions.shape)
         keys = keys.transpose(1, 2)
         queries = queries.transpose(1, 2)
         values = values.transpose(1, 2)

@@ -18,6 +18,9 @@ This folder contains scripts testing and improving the gpt trainer (which is in 
 * ~~clean dataset further (completely remove any stories with weird characters)~~ (done)
 * process inputs so that end of sequence doesn't predict beginning of next sequence (it should predict another endoftoken)
 * resubmit prompt completions with fixed version of text generator (this time don't skip special tokens like \n)
+* train on highest quality stories at the end of training run (maybe longest stories less than 512 tokens or use gpt model to rate stories and use highest rated stories)
+* ~~use beam search to generate top 5 results~~ (done, all beams will generate almost exactly the same result with variations only in the last few words of the output)
+* ~~use top-p sampling with temperature to generate output~~ (done, works much better than beam search)
 
 ### resolve:
 * importing in scripts made from notebook in different folder
