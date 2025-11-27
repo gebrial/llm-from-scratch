@@ -1,2 +1,4 @@
 # llm-from-scratch
-Repo to follow along with "Build a Large Language Model (From Scratch)" by Sebastian Raschka 
+Repo to follow along with "Build a Large Language Model (From Scratch)" by Sebastian Raschka. Various experiments were later conducted to train a small LLM (~120M params) on the TinyStories dataset to create new short stories.
+
+All relevant code is contained in the `src` folder. `src/components` contains the components required for building the LLM from scratch, including the attention module, transformer, and linear layers. The `src/train*` files are the files where the models were trained (models not committed to repo). Every `train` file contains any useful updates from experiments done on the previous `train` files (e.g., `train3.ipynb` may contain gradient accumulation and a new data processing method tested in various `train2` files. The most recent files will be the `train10` files.
