@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Pipeline artifacts (regenerate with scripts/prepare_tokenizer.py, prepare_dataset.py, train.py)
+data/tokenizer.json
+data/packed_dataset/
+checkpoints/
+completions.csv
