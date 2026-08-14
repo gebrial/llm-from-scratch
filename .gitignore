@@ -177,4 +177,4 @@ cython_debug/
 data/tokenizer.json
 data/packed_dataset/
 checkpoints/
-completions.csv
+completions*.csv
