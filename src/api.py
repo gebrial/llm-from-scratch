@@ -2,13 +2,19 @@ import os
 
 import psycopg
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from model_service import ModelService
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 load_dotenv()
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 model_service = ModelService("checkpoints/epoch=1-step=7042.ckpt", "data/tokenizer.json")
 
@@ -45,7 +51,8 @@ class GenerateRequest(BaseModel):
     prompt: str
 
 @app.post("/generate")
-def generate(req: GenerateRequest):
+@limiter.limit("5/minute")
+def generate(request: Request, req: GenerateRequest):
     story = model_service.generate(req.prompt)
     log_generation(req.prompt, story)
     return story
