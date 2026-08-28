@@ -72,7 +72,7 @@ def main():
         print(complete(model, tokenizer, args.prompt, args))
         return
 
-    with open(args.prompts_csv, newline="") as f:
+    with open(args.prompts_csv, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
 
     for i, row in enumerate(rows, start=1):
@@ -81,7 +81,7 @@ def main():
             print(f"Generated {i}/{len(rows)}")
 
     output_path = args.output or "completions.csv"
-    with open(output_path, "w", newline="") as f:
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=rows[0].keys())
         writer.writeheader()
         writer.writerows(rows)
