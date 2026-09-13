@@ -184,8 +184,12 @@ into this repo that Sanjaya will read or rehearse from.
    name, a number, who built what — does not become a fact by going unrebutted. Four
    fabrications were caught during his résumé rewrite. If it cannot be sourced from the
    code or from something he actually said, it does not go in.
-4. **He is not a beginner.** Six-plus years professional, React/TypeScript/Node.
-   Explanations should be dense and precise, not simplified.
+4. **He is not a beginner, but the depth is uneven.** Six-plus years professional, **most of
+   it TypeScript**. **React was a small part** — about a year, ending with his last role,
+   and the audit grades it RED. **Node** he has shipped real tooling in without ever being
+   taught what the runtime is. His last professional role ended **Dec 2024**. Explanations
+   should be dense and precise, not simplified — but do not assume React or Node fluency
+   from the TypeScript, which is the gap this project is being pointed at.
 5. **Prefer his wording over yours.** When he rephrases something, the concrete clause
    survives and the discriminating one tends to drop — so name the missing clause rather
    than rolling back his sentence. His rewrites have been better than the reference
