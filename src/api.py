@@ -31,13 +31,14 @@ db_conn.execute("""
     CREATE TABLE IF NOT EXISTS stories (
         id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         prompt TEXT NOT NULL,
-        story TEXT NOT NULL
+        story TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 """)
 
 
 # db_conn is a psycopg connection -- e.g. db_conn.execute("SQL...", (params,))
-def log_generation(prompt, story):
+def save_story(prompt, story):
     db_conn.execute(
         "INSERT INTO stories (prompt, story) VALUES (%s, %s)",
         (prompt, story)
@@ -54,5 +55,5 @@ class GenerateRequest(BaseModel):
 @limiter.limit("5/minute")
 def generate(request: Request, req: GenerateRequest):
     story = model_service.generate(req.prompt)
-    log_generation(req.prompt, story)
+    save_story(req.prompt, story)
     return story
