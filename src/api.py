@@ -16,7 +16,15 @@ app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
-model_service = ModelService("checkpoints/epoch=1-step=7042.ckpt", "data/tokenizer.json")
+# Neither the checkpoint nor the tokenizer is baked into the image -- the
+# Dockerfile copies only src/ and scripts/, so in a container both of these
+# resolve against mounted volumes and cannot be hardcoded to a local path.
+CHECKPOINT_PATH = os.environ["CHECKPOINT_PATH"]
+# the default value for the tokenizer json is from the script that generates it at:
+# scripts\prepare_tokenizer.py
+TOKENIZER_PATH = os.environ.get("TOKENIZER_PATH", "data/tokenizer.json")
+
+model_service = ModelService(CHECKPOINT_PATH, TOKENIZER_PATH)
 
 # should use connection pool at scale
 db_conn = psycopg.connect(

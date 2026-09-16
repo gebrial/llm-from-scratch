@@ -220,3 +220,11 @@ which is also the condition that forces a revisit. If concurrent users arrive,
 this decision is the one that changes.
 
 ---
+
+## 2026-09-15 — Default vs no default path values
+
+**Chose:** No default for `CHECKPOINT_PATH`, default value for `TOKENIZER_PATH`.
+
+**Considered:** Defaults for both paths, no defaults for either path, or default for `CHECKPOINT_PATH` and no default for `TOKENIZER_PATH`.
+
+**Why:** `TOKENIZER_PATH` has a hard-coded value in the script that generates the tokenizer json file so it makes sense to use that same value here. On the other hand, `CHECKPOINT_PATH` could change based on the hyperparameters chosen (e.g., number of epochs, number of steps, dataset size) so it doesn't make sense to set a default that might not be valid. It's better for the application to throw an error here if no value was defined that later (e.g., when the generate endpoint is finally hit) if a default value was used but no model exists at that path.
