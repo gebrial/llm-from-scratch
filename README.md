@@ -39,8 +39,14 @@ pip install -r requirements.txt
 
 ## Reproducing a trained model
 
-The original checkpoint is gone (it was never committed, only the training
-code was). To train a new one:
+A model has been trained from this pipeline and generates coherent stories:
+give it an opening line and it continues into a short children's story that
+stays on topic and reads like the TinyStories it learned from. It has been
+tested end to end locally, both through `scripts/generate.py` and through the
+`/generate` endpoint in `src/api.py`.
+
+The checkpoint is not in the repo -- `checkpoints/` is gitignored, since the
+file is about 1.4 GB. To train your own:
 
 ```
 # 1. train a tokenizer on TinyStories
