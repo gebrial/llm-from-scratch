@@ -7,6 +7,42 @@ Lightning training) for pretraining a ~120M parameter model on the
 [TinyStories](https://huggingface.co/datasets/roneneldan/TinyStories) dataset
 to generate short children's stories.
 
+## Running the API locally
+
+1. Copy `.env.example` to `.env` and fill in the variables appropriately (need a checkpoint path first, see the section below on training a model).
+
+1. Create and activate a virtual environment, from the repo root:
+
+    ```
+    python -m venv .venv
+    source .venv/Scripts/activate # Windows (Git Bash)
+    # source .venv/bin/activate   # Linux / macOS
+    ```
+
+1. Install dependencies:
+
+    ```
+    pip install -r requirements.txt
+    ```
+
+1. Ensure Docker Desktop is running and then launch the Postgres docker container:
+
+    ```
+    docker compose up -d db
+    ```
+
+1. Launch the API server, from the repo root:
+
+    ```
+    uvicorn api:app --app-dir src --reload
+    ```
+    Then wait for uvicorn to report it's running.
+
+1. Check it:
+    1. Navigate to `http://localhost:8000/docs`
+    1. Expand the `POST /generate` endpoint and press the "Try it out" button.
+    1. Submit a prompt string and check the result.
+
 ## Project layout
 
 ```
@@ -31,12 +67,6 @@ Current architecture, in `src/components/`:
   smaller vocabulary than GPT-2's since the text itself is simple
 - optional weight tying between the token embedding and output head
 
-## Setup
-
-```
-pip install -r requirements.txt
-```
-
 ## Reproducing a trained model
 
 A model has been trained from this pipeline and generates coherent stories:
@@ -49,6 +79,12 @@ The checkpoint is not in the repo -- `checkpoints/` is gitignored, since the
 file is about 1.4 GB. To train your own:
 
 ```
+# 0. Install dependencies:
+python -m venv .venv
+source .venv/Scripts/activate # Windows (Git Bash)
+# source .venv/bin/activate   # Linux / macOS
+pip install -r requirements.txt
+
 # 1. train a tokenizer on TinyStories
 python scripts/prepare_tokenizer.py --output data/tokenizer.json
 
