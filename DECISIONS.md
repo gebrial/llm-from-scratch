@@ -228,3 +228,25 @@ this decision is the one that changes.
 **Considered:** Defaults for both paths, no defaults for either path, or default for `CHECKPOINT_PATH` and no default for `TOKENIZER_PATH`.
 
 **Why:** `TOKENIZER_PATH` has a hard-coded value in the script that generates the tokenizer json file so it makes sense to use that same value here. On the other hand, `CHECKPOINT_PATH` could change based on the hyperparameters chosen (e.g., number of epochs, number of steps, dataset size) so it doesn't make sense to set a default that might not be valid. It's better for the application to throw an error here if no value was defined that later (e.g., when the generate endpoint is finally hit) if a default value was used but no model exists at that path.
+
+---
+
+## 2026-09-21 — Torch dependency index
+
+**Chose:** cpu-only index to fetch torch from (see Dockerfile).
+
+**Considered:** Originally I used the default index to download torch from but I switched to the cpu-only index now.
+
+**Why:** PyPI's torch wheel bundles 6GB of CUDA libraries. This is completely unnecessary on an EC2 instance with no GPU attached. It bloats the docker image unnecessarily so it was an easy choice to use the cpu-only index. Note that testing locally on windows this never actually surfaced because PyPI's Windows wheel is already CPU-only, so this change only helps for Linux machines (which the EC2 deployment instance is). The measured result in image size is 14.5GB down to 2.91GB.
+
+---
+
+## 2026-09-21 — torch/torchtune/torchao versions
+
+**Chose:** Pinned versions of torch/torchtune/torchao to versions that I've been testing locally (see requirements.txt)
+
+**Considered:** Originally left it at any version greater than what I have.
+
+**Why:** Originally torchao was pinned at 0.9.0 because I thought that newer versions broke torchtune's RoPE import, which I later found out it doesn't. Letting the version be whatever has been released the latest could cause bugs that I wouldn't catch locally. Pinning the versions to what I'm using on my laptop ensures I deploy exactly what I'm using and testing.
+
+**Open:** The other requirements don't have their versions pinned down, so the version running on the image might be different than the one tested on.
