@@ -250,3 +250,25 @@ this decision is the one that changes.
 **Why:** Originally torchao was pinned at 0.9.0 because I thought that newer versions broke torchtune's RoPE import, which I later found out it doesn't. Letting the version be whatever has been released the latest could cause bugs that I wouldn't catch locally. Pinning the versions to what I'm using on my laptop ensures I deploy exactly what I'm using and testing.
 
 **Open:** The other requirements don't have their versions pinned down, so the version running on the image might be different than the one tested on.
+
+---
+
+## 2026-09-21 — depends_on db condition check
+
+**Chose:** service_healthy (see docker-compose.yml)
+
+**Considered:** service_started
+
+**Why:** service_started only waits for the container process to launch, but the condition I actually want to wait for is the database to be up and accepting connections. For this I wrote a custom healthcheck which uses pg_isready and so I need to use service_healthy to check for that. This decision ensures the services are started in the correct order when running `docker compose up`.
+
+Only caveat is that pg_isready can read true during initdb in postgres which runs a temporary server during that time.
+
+---
+
+## 2026-09-21 — Restart policy for both services
+
+**Chose:** unless-stopped (see docker-compose.yml)
+
+**Considered:** always
+
+**Why:** If I ever shutdown these containers intentionally, I don't want them restarting on their own. The only time they should restart is after I've restarted the EC2 instance(requires docker daemon to start at boot, a setup step on EC2), or after a crash. This decision ensures proper recovery after crashes and reboots.
