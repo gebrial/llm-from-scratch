@@ -18,18 +18,6 @@ for it.
 
 ## Committed
 
-### 0. Fold the API into `docker-compose.yml`
-
-**Forces it:** My own stated prerequisite, 2026-08-28: *"I want add the api
-service in the docker compose before tackling auth. that way I can get it
-deployed asap once deal with the aws account verification issues."*
-
-**Changes:** One file. Compose currently starts only `db`. It needs an `api`
-service built from the `Dockerfile`, `POSTGRES_*` env with `host=db`, and mounts
-for `checkpoints/` and `data/`, which are deliberately not in the image.
-
-This is the smallest item here and everything below waits on it.
-
 ### 1. Deploy to AWS EC2
 
 **Forces it:** `project-brief-llm-inference-api.md` names AWS as the gap that
@@ -99,6 +87,33 @@ why this sits below it.
 Related: both `Open:` flags in `DECISIONS.md`, on the rate limiter and on the
 store, are this same question.
 
+### 6. Separate the training code from the serving code
+
+**Forces it:** Decided 2026-09-20. `src/model_service.py` imports `LitGPTModel`
+from `scripts/train.py`, so serving reaches into training code and needs a
+`sys.path` hack to do it. Importing that module also runs `from datasets import
+load_from_disk`, so every API start loads the HuggingFace datasets stack for a
+function the request path never calls.
+
+**Changes:** `LitGPTModel`, or a plain-`torch` equivalent, moves into `src/`.
+Two further severances become possible once it has:
+
+- the checkpoint could be exported as a raw `state_dict`, which drops
+  `lightning` from the serving path entirely
+- `components/attention.py` imports `RotaryPositionalEmbeddings` from
+  `torchtune` for that one class, and `torchtune` is what drags in `datasets`,
+  `pyarrow` and `pandas`. Vendoring that one implementation severs the chain.
+  Rewriting it from scratch instead risks numerical drift against a model
+  already trained against torchtune's version, so it would need verifying
+  against known prompts.
+
+**Not for image size.** Measured 2026-09-20: `torch` is 531 MB on its own and
+irreducible for inference, while the entire severable cluster -- the `datasets`
+stack at ~165 MB, `matplotlib` at 34 MB, `lightning` and `torchtune` and
+`torchao` at 28 MB between them -- is worth about 200 MB. The reasons are
+coupling and start-up memory, the latter mattering on a 2 GB `t3.small` already
+holding a 1.4 GB checkpoint. Related to item 5.
+
 ---
 
 ## Suggested by an agent, not decided
@@ -121,7 +136,22 @@ real.
 5. **Make the instance setup reproducible**, with a setup script or by pushing
    the image to a registry rather than building it on the box.
 6. **Tests.** There are none.
-7. **A slimmer multi-stage Docker image.**
+7. **A slimmer Docker image.** Measured 2026-09-20: 14.5 GB, of which a single
+   `pip install` layer is 8.44 GB. Three separable pieces:
+   - **CPU-only torch** -- done 2026-09-20. PyPI's Linux wheel bundles CUDA
+     libraries a GPU-less `t3.small` cannot use, while PyPI's Windows wheel is
+     already CPU-only. That asymmetry, not any local config, is why the venv is
+     small and the image is not. The Dockerfile now installs torch from
+     PyTorch's cpu index. Result: 14.5 GB down to 2.91 GB, of which the torch
+     layer is 1.13 GB and the requirements layer 815 MB.
+   - **Severing `torchtune` and `lightning`** would drop the `datasets` stack
+     (~165 MB), but that is committed item 6 above and is motivated by coupling
+     rather than by size.
+   - **A separate requirements file for the API**, without `matplotlib`, which
+     nothing on the request path imports. `datasets` cannot be dropped this way,
+     per above.
+
+   Multi-stage builds, the original suggestion, are not needed for any of these.
 8. **Request queuing or dynamic batching.** The brief asked for "rate limiting or
    request queuing" and rate limiting satisfied that. This overlaps with item 5
    above, where batching is one of the things a separate inference service
@@ -174,3 +204,10 @@ deploy works.
 
 **Retraining the model.** The original checkpoint was lost. A new model has been
 trained and tested locally through the `/generate` endpoint.
+
+**Folding the API into `docker-compose.yml`**, done 2026-09-21. This was my own
+stated prerequisite for deploying before auth. Compose now builds an `api`
+service from the `Dockerfile`, with `checkpoints/` and `data/` mounted read-only
+because they are deliberately not in the image. It starts only once `db` passes
+its `pg_isready` healthcheck, and both services restart `unless-stopped`. The
+reasoning is in `DECISIONS.md`.
