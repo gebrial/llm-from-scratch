@@ -56,7 +56,8 @@ written in another language. It came up, and was moved past quickly.
 ## 2026-09-14 (backfilled) — Rate limiting on `/generate`: slowapi, 5/min, keyed on IP
 
 **Chose:** `slowapi`, 5 requests per minute, keyed on remote IP, applied to
-`/generate` only. `/ping` is unlimited.
+`/generate` only. `/ping` is unlimited. *`GET /stories` added at 60/min on
+2026-09-23; see the stories feed entry.*
 
 **Considered:** IP is the only key available today. There are no plans to
 implement API keys. Once users exist, the key moves to the user.
@@ -99,10 +100,14 @@ CREATE TABLE IF NOT EXISTS stories (
 );
 ```
 
-**What the table is:** a cache of finished stories, kept so that a visitor can be
+**What the table is:** the store behind the **feed**, kept so that a visitor can be
 shown stories that already exist instead of waiting on a generation of their own.
 Generation is slow and reading a stored story is fast. Later, a signed-in user
 sees their own past prompts and stories.
+
+It was called a cache until 2026-09-23. A cache is looked up by key, and this is
+read newest first regardless of prompt, so the word was wrong. See the entry on
+the stories feed below, and `CONTEXT.md` for the terms.
 
 It is **not a usage log**, though it was named like one until 2026-09-14. See the
 separate entry on usage logging below.
@@ -154,7 +159,8 @@ be an invented justification; stated as a condition it is true.
 **Open:** Nothing reads the table. `save_story` writes; no `SELECT` exists
 anywhere in `src/` or `scripts/`, and no endpoint returns stored stories. The
 purpose recorded above is the reason the table exists and is not yet code. See
-`ROADMAP.md`.
+`ROADMAP.md`. *Designed 2026-09-23, in the stories feed entry below; this closes
+when `GET /stories` exists.*
 
 **Open:** One process or several. This decides whether the conditional reason
 above ever becomes a real one, and it is the same question flagged under the rate
@@ -181,6 +187,13 @@ access turns out to be awkward once deployed, the fallback is a short script in
 `scripts/` that lists recent rows and deletes by id. An admin endpoint is
 deliberately not being built.
 
+**Revisit before the API opens publicly** (`ROADMAP.md` item 3). Re-checked
+2026-09-23 when the feed was designed: the feed shows every stored story to every
+later visitor, so an unreviewed prompt stops being theoretical the moment
+strangers can write rows. Until the port opens, only I can. Options to weigh
+then: a `hidden` flag the feed filters on, opt-in publishing, or listing only
+stories from preset prompts.
+
 ---
 
 ## 2026-09-14 — Usage logging: considered and dropped
@@ -190,8 +203,8 @@ generation took, or what was returned.
 
 **Considered:** `project-brief-llm-inference-api.md` asked for "PostgreSQL for
 persisting something real (e.g. request/usage logging)". That parenthetical was
-an example of something real to persist, and the story cache satisfies the same
-goal.
+an example of something real to persist, and the stories behind the feed satisfy
+the same goal.
 
 **Why:** The store that exists is product-facing: it holds content to show
 visitors. Usage logging answers an operations question, and nobody is operating
@@ -272,3 +285,55 @@ Only caveat is that pg_isready can read true during initdb in postgres which run
 **Considered:** always
 
 **Why:** If I ever shutdown these containers intentionally, I don't want them restarting on their own. The only time they should restart is after I've restarted the EC2 instance(requires docker daemon to start at boot, a setup step on EC2), or after a crash. This decision ensures proper recovery after crashes and reboots.
+
+---
+
+## 2026-09-23 — The stories feed: `GET /stories`
+
+*Settled in a grill session before any of it was written.*
+
+**Chose:** A feed of the most recent stories, newest first, whatever the prompt.
+
+```
+GET /stories?limit=20
+→ {"stories": [{"prompt": ..., "story": ..., "created_at": ...}, ...]}
+```
+
+**Considered:** Looking stories up by prompt, which is what "cache" implied: a
+visitor types an opening line and is shown stories already stored for it.
+
+**Why:** A feed gives the page something to show the moment it loads and while a
+generation runs, which covers "instead of waiting" without a lookup. A lookup by
+prompt would almost never hit, since free-text prompts rarely repeat exactly.
+
+**The shape, and why each part:**
+
+- **An envelope, `{"stories": [...]}`, not a bare list.** An object at the top
+  level can gain fields later, such as a pagination cursor, without breaking
+  callers. A bare list cannot. Declared as a Pydantic response model, so the
+  output is validated, documented in `/docs`, and limited to the declared fields.
+- **Each item is `prompt`, `story` and `created_at`. No `id`.** The stored
+  `story` already begins with the prompt, because generation decodes the prompt
+  tokens along with the continuation. Returning both lets the UI set the
+  visitor's words apart from the model's without the API guessing where one ends.
+  `id` is left out until something needs it: adding a field later is free,
+  removing one breaks whoever relied on it. It would also show roughly how many
+  stories exist.
+- **Ordered by `created_at` descending, `id` descending as a tie-break.** Two
+  rows can share a timestamp, and without a second key their order is undefined.
+  `id` is used in the query and not returned.
+- **`limit`: default 20, maximum 50, no pagination.** The maximum is what bounds
+  the cost of a read, which otherwise grows with the table. Out-of-range values
+  are a 422. Pagination waits until there are enough stories to page through,
+  and the envelope keeps room for it.
+- **Rate limited at 60/min per IP.** The read is cheap, so this guards against a
+  script rather than rationing reads. Every public endpoint having a limit is
+  easier to reason about than one quietly left open. Not 5/min like `/generate`,
+  which would lock out a visitor who reloads a few times.
+
+**Moderation is unchanged**, and now matters: see the revisit note on the
+unreviewed-publishing entry above.
+
+**Known future break:** a turn-taking story (`ROADMAP.md` item 8) does not fit
+`{prompt, story}`. That is planned as its own page and its own storage rather
+than a change to this feed, so this shape is not expected to change for it.

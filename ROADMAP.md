@@ -26,15 +26,21 @@ change the instance size, the budget, or the priority of item 7. Better learned
 before a UI is built on top of it. HTTPS comes before the UI because the UI
 cannot call the API without it (item 3).
 
-### 1. A read path for the story cache
+### 1. A read path for the stories feed
 
 **Forces it:** The `stories` table exists so visitors can be shown stories that
 already exist. Nothing reads it today, so that purpose is not yet code. This
 follows from the table's recorded purpose in `DECISIONS.md` rather than being a
 separately stated goal.
 
-**Changes:** A `GET` endpoint returning recent stories, ordered by `created_at`,
-and the first hand-written `SELECT` in this project.
+**Changes:** `GET /stories`, returning `{"stories": [...]}` of `prompt`, `story`
+and `created_at`, newest first, with a `limit` of 20 by default and 50 at most,
+rate limited at 60/min. The first hand-written `SELECT` in this project. Shape
+settled 2026-09-23; the reasons are in `DECISIONS.md`, "The stories feed".
+
+**First:** confirm the local volume's `stories` table has `created_at`, per the
+deployment note in `DECISIONS.md`. `CREATE TABLE IF NOT EXISTS` will not have
+added it to an older table.
 
 ### 2. Deploy to AWS EC2
 
@@ -70,7 +76,10 @@ proxy in front of uvicorn terminating TLS. Three things follow:
   DNS record needs a stable target. An Elastic IP is billed while its instance
   is stopped, which counts against the budget.
 - **The port opens publicly**, since visitors' browsers call the API directly.
-  Rate limiting exists, which was the condition for opening it.
+  Rate limiting exists, which was the condition for opening it. Moderation is
+  the other condition: once strangers can write rows, the feed shows their
+  prompts to everyone. Revisit per the unreviewed-publishing entry in
+  `DECISIONS.md` before opening.
 - **The rate limiter must see the real client IP.** Behind a proxy every request
   arrives from the proxy's address, so the limiter would treat all visitors as
   one and share 5/min between them. uvicorn needs `--proxy-headers` and to trust
@@ -102,7 +111,7 @@ deployment is not waiting on it. It sits after the UI because a sign-in flow
 needs somewhere to sign in.
 
 **Changes:** Once users exist, the rate limiter keys on the user rather than the
-remote IP, which `DECISIONS.md` already anticipates. The story cache gains an
+remote IP, which `DECISIONS.md` already anticipates. The `stories` table gains an
 owner column so a signed-in user can see their own past prompts.
 
 ### 6. Serve concurrent visitors without contention
@@ -159,6 +168,28 @@ stack at ~165 MB, `matplotlib` at 34 MB, `lightning` and `torchtune` and
 `torchao` at 28 MB between them -- is worth about 200 MB. The reasons are
 coupling and start-up memory, the latter mattering on a 2 GB `t3.small` already
 holding a 1.4 GB checkpoint. Related to item 6.
+
+### 8. Turn-taking stories
+
+**Forces it:** My own idea, 2026-09-23. A visitor and the model take turns
+writing a story: the visitor writes the first sentence, the model the next, and
+so on.
+
+**Changes:** Its own page and its own database, kept apart from the feed rather
+than folded into it. A turn-taking story is an ordered sequence of turns, each
+by the visitor or the model, which the feed's `{prompt, story}` shape does not
+describe. Keeping them separate means the feed's shape never has to change for
+it.
+
+**Unknowns that will shape it:**
+
+- The model writes until end-of-story, not one sentence. Stopping after a single
+  sentence is a generation problem in its own right.
+- Where an unfinished story lives between turns, and what happens to one a
+  visitor abandons.
+- `CONTEXT.md` gains a term for a turn, and "story" needs to cover both kinds.
+
+This is also the revisit condition recorded under GraphQL in "Ruled out" below.
 
 ---
 
@@ -221,7 +252,8 @@ the static React UI on Pages, calling the API on the instance.
 model continues a story from an opening line rather than holding a conversation.
 It would become worth revisiting if the model were expanded into something
 conversational, for instance alternating sentences between the user and the
-model.
+model. *That condition came up 2026-09-23 as committed item 8, turn-taking
+stories. Whether it changes the answer on GraphQL is not yet decided.*
 
 **Lambda as the deploy target.** Ruled out by an agent early, on cold starts and
 the memory a loaded PyTorch model needs. The reasoning is sound and I have not
