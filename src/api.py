@@ -1,9 +1,12 @@
 import os
 
 import psycopg
+from psycopg.rows import dict_row
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from pydantic import BaseModel
+from typing import Annotated
+from datetime import datetime
 from model_service import ModelService
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -65,3 +68,32 @@ def generate(request: Request, req: GenerateRequest):
     story = model_service.generate(req.prompt)
     save_story(req.prompt, story)
     return story
+
+class Story(BaseModel):
+    prompt: str
+    story: str
+    created_at: datetime
+
+class StoriesResponse(BaseModel):
+    stories: list[Story]
+
+@app.get("/stories")
+@limiter.limit("60/minute")
+def stories(
+    request: Request,
+    limit: Annotated[int, Query(
+        ge=1,
+        le=50
+    )] = 20
+) -> StoriesResponse:
+    with db_conn.cursor(row_factory=dict_row) as cur:
+        query = """
+        SELECT prompt, story, created_at
+        FROM stories 
+        ORDER BY created_at DESC, id DESC 
+        LIMIT %s;
+        """
+        cur.execute(query, [limit])
+        rows = cur.fetchall()
+        return StoriesResponse(stories=[Story(**row) for row in rows])
+

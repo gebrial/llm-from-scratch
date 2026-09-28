@@ -42,6 +42,39 @@ to generate short children's stories.
     1. Navigate to `http://localhost:8000/docs`
     1. Expand the `POST /generate` endpoint and press the "Try it out" button.
     1. Submit a prompt string and check the result.
+    1. Expand `GET /stories` and run it: the story you just generated should be first.
+
+## Running the API with Docker Compose
+
+This runs the API in a container alongside Postgres, the same way it runs when
+deployed. For working on the code, the local setup above is faster, since
+uvicorn's `--reload` picks up every save.
+
+1. Have `.env` filled in as above, with the checkpoint under `checkpoints/` and
+   the tokenizer at `data/tokenizer.json`. Neither is in the image: compose
+   mounts both directories into the container read-only. `POSTGRES_HOST` does
+   not need setting, since compose points the API at the `db` service itself.
+
+1. Build the image and start both services, from the repo root:
+
+    ```
+    docker compose up -d --build
+    ```
+
+    The API waits for Postgres to pass its healthcheck before starting, then
+    takes a little while longer to load the model. `docker compose logs -f api`
+    shows when uvicorn is up.
+
+1. Check it the same way as above, at `http://localhost:8000/docs`.
+
+**After changing code, rebuild.** The Dockerfile copies `src/` into the image at
+build time, so a plain `docker compose up` keeps running the old code. Pass
+`--build` again. Only the code layers rebuild; the torch and dependency layers
+come from cache.
+
+To stop everything, run `docker compose down`. Stored stories survive it, since
+they live in the `pg_data` volume. `docker compose down -v` deletes that volume,
+and every story with it.
 
 ## Project layout
 

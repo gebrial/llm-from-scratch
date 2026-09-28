@@ -156,11 +156,9 @@ be an invented justification; stated as a condition it is true.
   warranted yet, and this note is here so the gap is not met for the first time
   on the instance.
 
-**Open:** Nothing reads the table. `save_story` writes; no `SELECT` exists
-anywhere in `src/` or `scripts/`, and no endpoint returns stored stories. The
-purpose recorded above is the reason the table exists and is not yet code. See
-`ROADMAP.md`. *Designed 2026-09-23, in the stories feed entry below; this closes
-when `GET /stories` exists.*
+**Closed 2026-09-28:** ~~Nothing reads the table.~~ `GET /stories` now reads it,
+as designed in the stories feed entry below. Until then the purpose recorded
+above was the reason the table existed rather than code.
 
 **Open:** One process or several. This decides whether the conditional reason
 above ever becomes a real one, and it is the same question flagged under the rate
