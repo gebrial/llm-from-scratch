@@ -55,6 +55,18 @@ uvicorn's `--reload` picks up every save.
    mounts both directories into the container read-only. `POSTGRES_HOST` does
    not need setting, since compose points the API at the `db` service itself.
 
+   On a small machine, such as the 2 GB EC2 instance this is deployed to, serve
+   a stripped checkpoint rather than the training one. Two thirds of a training
+   checkpoint is optimizer state that inference never uses, but loading it
+   still takes memory, enough to get the container OOM-killed:
+
+    ```
+    python scripts/strip_checkpoint.py --checkpoint "checkpoints/run1/<checkpoint>.ckpt"
+    ```
+
+   This writes `<checkpoint>-inference.ckpt` alongside it, with identical
+   weights. Point `CHECKPOINT_PATH` at that file.
+
 1. Build the image and start both services, from the repo root:
 
     ```
