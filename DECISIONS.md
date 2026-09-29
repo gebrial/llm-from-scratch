@@ -70,6 +70,13 @@ demo, not real usage.
 laptop generates stories from a prompt. It is an observed figure, and it gets
 re-derived once this runs on a cloud instance.
 
+*Re-derived 2026-09-29: **1/min.** On the deployed `t3.small` one story takes
+about a minute, with the CPU at 100%, so by the same rule the ceiling is one per
+minute. The limit is per IP, though, and the contention is global: two visitors
+on different IPs can still both be generating at once. That is a separate
+problem from rationing, taken up in `ROADMAP.md`, "Serve concurrent visitors
+without contention".*
+
 **Open:** Where the counter lives. `slowapi` with no `storage_uri` configured —
 which is the current case — keeps its counters in memory, in the process. Two
 consequences follow: the counters reset on restart, and they are per-process,
@@ -185,7 +192,7 @@ access turns out to be awkward once deployed, the fallback is a short script in
 `scripts/` that lists recent rows and deletes by id. An admin endpoint is
 deliberately not being built.
 
-**Revisit before the API opens publicly** (`ROADMAP.md` item 3). Re-checked
+**Revisit before the API opens publicly** (`ROADMAP.md` item 1, HTTPS on a domain). Re-checked
 2026-09-23 when the feed was designed: the feed shows every stored story to every
 later visitor, so an unreviewed prompt stops being theoretical the moment
 strangers can write rows. Until the port opens, only I can. Options to weigh
@@ -332,6 +339,43 @@ prompt would almost never hit, since free-text prompts rarely repeat exactly.
 **Moderation is unchanged**, and now matters: see the revisit note on the
 unreviewed-publishing entry above.
 
-**Known future break:** a turn-taking story (`ROADMAP.md` item 8) does not fit
-`{prompt, story}`. That is planned as its own page and its own storage rather
-than a change to this feed, so this shape is not expected to change for it.
+**Known future break:** a turn-taking story (`ROADMAP.md`, "Turn-taking
+stories") does not fit `{prompt, story}`. That is planned as its own page and its
+own storage rather than a change to this feed, so this shape is not expected to
+change for it.
+
+---
+
+## 2026-09-29 — Serve a stripped checkpoint, not the training checkpoint
+
+**Chose:** A one-time `scripts/strip_checkpoint.py` that keeps only what
+`load_from_checkpoint` reads (`state_dict`, `hyper_parameters` and the Lightning
+version) and drops the rest. The API loads the result, `<name>-inference.ckpt`,
+through the same `LitGPTModel.load_from_checkpoint` call as before. The full
+checkpoint stays on my laptop, since it is the only file that can resume
+training.
+
+**Considered:**
+
+- **A swap file.** It would get past the load spike, but it hides the
+  measurement, and weights paged out to disk make generation slower still.
+- **Casting the weights to bf16**, halving them again to ~240 MB. It is lossy: it
+  changes the arithmetic, so generation quality would need re-checking. Kept in
+  reserve in case the stripped file had not fit.
+- **A `t3.medium` (4 GB)**, at about $30/month running against a $5 budget.
+- **Dropping Lightning from serving entirely**, loading a raw `state_dict` into a
+  plain `GPTModel`. That is `ROADMAP.md`, "Separate the training code from the
+  serving code", and is a larger change than the problem needed.
+
+**Why:** The first deploy to the 2 GB `t3.small` was OOM-killed on start-up
+(exit code 137, four restarts), reaching 1.33 GB before the kill. The checkpoint
+was 1436 MB, of which **957 MB was Adam's optimizer state**, two buffers per
+parameter, which inference never reads. `load_from_checkpoint` loads the whole
+file into memory regardless. Stripped, the file is 479 MB. The weights are
+bit-for-bit identical (`torch.equal` on every tensor), so this is lossless.
+
+**Measured on the instance:** ~1.2 GB peak while loading, 853 MB settled, 907 MB
+during a generation. Host `available` memory during a generation: 538 MB.
+
+**Deployment note:** `CHECKPOINT_PATH` in `.env` must name the `-inference`
+file. The full checkpoint would still OOM the instance.

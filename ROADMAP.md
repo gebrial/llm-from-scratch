@@ -18,54 +18,21 @@ for it.
 
 ## Committed
 
-**Order, decided 2026-09-23.** The read path comes first because it is small,
-local, and does not need the instance. The deploy comes before the UI not
-because there is anything to visit yet, but because it is the measurement: a
-2 GB `t3.small` holding torch and the model may not fit, and the answer could
-change the instance size, the budget, or the priority of item 7. Better learned
-before a UI is built on top of it. HTTPS comes before the UI because the UI
-cannot call the API without it (item 3).
+**Order, decided 2026-09-23.** The read path came first because it was small and
+local, and the deploy came before the UI because it was the measurement. Both
+are done as of 2026-09-29 (see "Done" below), and the items were renumbered then.
+The measurement did change things: the full checkpoint did not fit, and the fix
+was a first, small piece of item 5. HTTPS comes before the UI because the UI
+cannot call the API without it (item 1).
 
-### 1. A read path for the stories feed
+**Constraint on every item below:** budget is $5/month and the `t3.small` is
+about $15/month, so the instance stops when idle rather than running
+continuously. Storage is billed while stopped: the 30 GB root volume is roughly
+$2.40/month, about half the budget, against about 5 GB actually needed.
 
-**Forces it:** The `stories` table exists so visitors can be shown stories that
-already exist. Nothing reads it today, so that purpose is not yet code. This
-follows from the table's recorded purpose in `DECISIONS.md` rather than being a
-separately stated goal.
+### 1. Serve the API over HTTPS on a domain
 
-**Changes:** `GET /stories`, returning `{"stories": [...]}` of `prompt`, `story`
-and `created_at`, newest first, with a `limit` of 20 by default and 50 at most,
-rate limited at 60/min. The first hand-written `SELECT` in this project. Shape
-settled 2026-09-23; the reasons are in `DECISIONS.md`, "The stories feed".
-
-**First:** confirm the local volume's `stories` table has `created_at`, per the
-deployment note in `DECISIONS.md`. `CREATE TABLE IF NOT EXISTS` will not have
-added it to an older table.
-
-### 2. Deploy to AWS EC2
-
-**Forces it:** `project-brief-llm-inference-api.md` names AWS as the gap that
-appeared most often in the job evaluations, 6 of 31. Several items below cannot
-be measured or built without a running instance.
-
-**Status:** The account is active and a `t3.small` has been created, 2026-09-23.
-The two August launches that failed with "This account is currently blocked" are
-resolved.
-
-**Changes:** A bare backend deploy: Docker on the instance, enabled at boot so
-`restart: unless-stopped` survives a stop and start, the repo cloned, the
-checkpoint and tokenizer copied across, and `docker compose up`. Reachable from
-my own IP only. The point is to measure the container's memory with the model
-loaded.
-
-**Constraint already decided:** budget is $5/month and a `t3.small` is about
-$15/month, so the instance stops when idle rather than running continuously.
-Storage is billed while stopped: the 30 GB root volume is roughly $2.40/month,
-about half the budget, against about 5 GB actually needed.
-
-### 3. Serve the API over HTTPS on a domain
-
-**Forces it:** Item 4 puts the UI on GitHub Pages, which serves only over HTTPS,
+**Forces it:** Item 2 puts the UI on GitHub Pages, which serves only over HTTPS,
 and browsers block an HTTPS page from calling a plain-HTTP API as mixed content.
 So the API needs a domain and a TLS certificate before the UI can reach it.
 
@@ -82,13 +49,13 @@ proxy in front of uvicorn terminating TLS. Three things follow:
   `DECISIONS.md` before opening.
 - **The rate limiter must see the real client IP.** Behind a proxy every request
   arrives from the proxy's address, so the limiter would treat all visitors as
-  one and share 5/min between them. uvicorn needs `--proxy-headers` and to trust
+  one and share 1/min between them. uvicorn needs `--proxy-headers` and to trust
   the proxy's forwarded address.
 
 All three were agent suggestions, promoted here 2026-09-23. The list below notes
 where they went.
 
-### 4. A React UI on GitHub Pages
+### 2. A React UI on GitHub Pages
 
 **Forces it:** Recorded in `INTERVIEW-HANDOFF.md` as a decision taken 2026-09-12.
 It supersedes the brief's line about frontend being out of scope, which was
@@ -104,7 +71,7 @@ asleep, so the UI should say so rather than time out. This covers most of the
 deferred static failover page below. Serving the UI from the instance instead
 would avoid CORS, but would still need HTTPS and would go down with the API.
 
-### 5. Auth (OAuth)
+### 3. Auth (OAuth)
 
 **Forces it:** The brief names OAuth. I ordered it after the compose-fold so that
 deployment is not waiting on it. It sits after the UI because a sign-in flow
@@ -114,15 +81,41 @@ needs somewhere to sign in.
 remote IP, which `DECISIONS.md` already anticipates. The `stories` table gains an
 owner column so a signed-in user can see their own past prompts.
 
-### 6. Serve concurrent visitors without contention
+### 4. Serve concurrent visitors without contention
 
 **Forces it:** Generation is slow, so two visitors at once contend for the same
-hardware. Not urgent: `/generate` is a synchronous path operation, so FastAPI
-already runs it in a worker threadpool and one process serves several requests at
-a time. The constraint is hardware, not process count.
+hardware. `/generate` is a synchronous path operation, so FastAPI already runs it
+in a worker threadpool and one process serves several requests at a time. The
+constraint is hardware, not process count.
 
-**This is a fork, not a plan, and it waits on a measurement.** Two ways to get
-there:
+**Measured 2026-09-29 on the `t3.small`:** one story takes about a minute, with
+the CPU at 100% throughout. The API container holds 853 MB with the model loaded
+and 907 MB while generating, leaving 538 MB `available` on the host. So:
+
+- **A second copy of the model does not fit.** More uvicorn workers are out on
+  this instance.
+- **Two generations at once do fit in memory** (activations are ~50 MB), since
+  the threadpool shares one model. But they split two vCPUs already at 100%, so
+  each takes about twice as long. Nobody is served sooner.
+- **Sustained 100% CPU spends CPU credits.** A `t3` in unlimited mode bills for
+  running above its 20% baseline; in standard mode it throttles to it instead.
+  Cheap at demo traffic, but worth knowing which mode the instance is in.
+
+**Next, my own idea, 2026-09-29:** answer "busy" rather than start a second
+generation. A process-wide guard around the model: if a generation is already
+running, `/generate` returns at once with a distinct status and the UI says to
+try again shortly. Unlike the rate limiter, this is global rather than per-IP,
+which is where the contention actually is. Undecided: the status code and body,
+whether to hold a short queue before refusing, and how the UI (item 2) shows it.
+
+**Also the per-request cost itself.** Generation re-runs the whole sequence
+through the model for every new token (`components/generatetext.py` keeps no
+KV cache), so the work per story grows with the square of its length. A KV cache
+would make each new token cost one position rather than all of them, and is
+likely the largest single speed-up available on this hardware. It touches the
+model's attention code, so it would need checking against known outputs.
+
+**The longer-term fork**, once the above is not enough:
 
 - **More uvicorn workers.** Each worker loads its own copy of the model, so
   memory multiplies by the number of workers and they still share one machine's
@@ -135,14 +128,13 @@ there:
   build and operate, and makes shared storage for the rate limiter mandatory
   rather than optional.
 
-**The fact that decides it** is what the deployed instance's memory and GPU do
-under two concurrent generations. That cannot be measured before item 2, which is
-why this sits below it.
+On this instance the first is ruled out by memory, and the second means a second
+machine, which the budget does not allow.
 
 Related: both `Open:` flags in `DECISIONS.md`, on the rate limiter and on the
 store, are this same question.
 
-### 7. Separate the training code from the serving code
+### 5. Separate the training code from the serving code
 
 **Forces it:** Decided 2026-09-20. `src/model_service.py` imports `LitGPTModel`
 from `scripts/train.py`, so serving reaches into training code and needs a
@@ -154,7 +146,10 @@ function the request path never calls.
 Two further severances become possible once it has:
 
 - the checkpoint could be exported as a raw `state_dict`, which drops
-  `lightning` from the serving path entirely
+  `lightning` from the serving path entirely. A first step exists: since
+  2026-09-29 the API loads a checkpoint stripped of optimizer state
+  (`scripts/strip_checkpoint.py`), but it is still a Lightning checkpoint
+  loaded through `LitGPTModel`
 - `components/attention.py` imports `RotaryPositionalEmbeddings` from
   `torchtune` for that one class, and `torchtune` is what drags in `datasets`,
   `pyarrow` and `pandas`. Vendoring that one implementation severs the chain.
@@ -166,10 +161,10 @@ Two further severances become possible once it has:
 irreducible for inference, while the entire severable cluster -- the `datasets`
 stack at ~165 MB, `matplotlib` at 34 MB, `lightning` and `torchtune` and
 `torchao` at 28 MB between them -- is worth about 200 MB. The reasons are
-coupling and start-up memory, the latter mattering on a 2 GB `t3.small` already
-holding a 1.4 GB checkpoint. Related to item 6.
+coupling and start-up memory, the latter mattering on a 2 GB `t3.small` where the
+loaded model already takes 853 MB. Related to item 4.
 
-### 8. Turn-taking stories
+### 6. Turn-taking stories
 
 **Forces it:** My own idea, 2026-09-23. A visitor and the model take turns
 writing a story: the visitor writes the first sentence, the model the next, and
@@ -200,7 +195,7 @@ and I never said yes or no. They are listed so they stop being invisible, not
 because they are planned. Several are ten-second decisions once the deployment is
 real.
 
-Three of the original ten were promoted to committed item 3 on 2026-09-23, once
+Three of the original ten were promoted to committed item 1 on 2026-09-23, once
 putting the UI on GitHub Pages made them necessary: an Elastic IP, opening the
 port publicly, and HTTPS on a subdomain of `gebrial.ca`.
 
@@ -218,7 +213,7 @@ port publicly, and HTTPS on a subdomain of `gebrial.ca`.
      PyTorch's cpu index. Result: 14.5 GB down to 2.91 GB, of which the torch
      layer is 1.13 GB and the requirements layer 815 MB.
    - **Severing `torchtune` and `lightning`** would drop the `datasets` stack
-     (~165 MB), but that is committed item 7 above and is motivated by coupling
+     (~165 MB), but that is committed item 5 above and is motivated by coupling
      rather than by size.
    - **A separate requirements file for the API**, without `matplotlib`, which
      nothing on the request path imports. `datasets` cannot be dropped this way,
@@ -227,7 +222,7 @@ port publicly, and HTTPS on a subdomain of `gebrial.ca`.
    Multi-stage builds, the original suggestion, are not needed for any of these.
 5. **Request queuing or dynamic batching.** The brief asked for "rate limiting or
    request queuing" and rate limiting satisfied that. This overlaps with
-   committed item 6 above, where batching is one of the things a separate
+   committed item 4 above, where batching is one of the things a separate
    inference service enables.
 6. **Scope down the IAM policy** from `AdministratorAccess`.
 7. **Add SQLAlchemy.** Raw `psycopg` was chosen first. Worth noting that
@@ -245,14 +240,14 @@ resolved by `bb4a8bc` on 2026-08-28 and is not outstanding.
 server to generate new stories and a database to store them. Existing stories
 could be published statically, but generating them still requires a server
 somewhere, so it does not remove the requirement. This rules out Pages as the
-host for the whole project, not for the frontend alone: committed item 4 puts
+host for the whole project, not for the frontend alone: committed item 2 puts
 the static React UI on Pages, calling the API on the instance.
 
 **GraphQL**, decided 2026-09-14. Not a fit for this project as it stands. The
 model continues a story from an opening line rather than holding a conversation.
 It would become worth revisiting if the model were expanded into something
 conversational, for instance alternating sentences between the user and the
-model. *That condition came up 2026-09-23 as committed item 8, turn-taking
+model. *That condition came up 2026-09-23 as committed item 6, turn-taking
 stories. Whether it changes the answer on GraphQL is not yet decided.*
 
 **Lambda as the deploy target.** Ruled out by an agent early, on cold starts and
@@ -272,7 +267,7 @@ and an admin endpoint for moderation.
 
 **A static failover page** on S3 with a Route 53 health check, so something is
 served while the instance is stopped. Agreed as a stretch goal after a plain EC2
-deploy works. Mostly covered by committed item 4 since 2026-09-23: a UI on Pages
+deploy works. Mostly covered by committed item 2 since 2026-09-23: a UI on Pages
 is always served and can report the API as asleep. What would remain is showing
 existing stories while the instance is stopped, which would need them published
 somewhere static.
@@ -290,3 +285,21 @@ service from the `Dockerfile`, with `checkpoints/` and `data/` mounted read-only
 because they are deliberately not in the image. It starts only once `db` passes
 its `pg_isready` healthcheck, and both services restart `unless-stopped`. The
 reasoning is in `DECISIONS.md`.
+
+**A read path for the stories feed**, done 2026-09-28. `GET /stories` returns the
+most recent stories, newest first: `{"stories": [...]}` of `prompt`, `story` and
+`created_at`, `limit` 20 by default and 50 at most, rate limited at 60/min. The
+first hand-written `SELECT` in this project. The shape and its reasons are in
+`DECISIONS.md`, "The stories feed".
+
+**Deploying to AWS EC2**, done 2026-09-29. A bare backend deploy to the
+`t3.small`, reachable from my own IP only: Docker enabled at boot, the repo
+cloned, the checkpoint, tokenizer and `.env` copied across with `scp`, and
+`docker compose up -d --build` on the box (4m10s). It came back up on its own
+after a stop and start of the instance.
+
+The point was the measurement, and it paid off. The first start was OOM-killed:
+the training checkpoint was 1436 MB, two thirds of it optimizer state that
+inference never reads. The API now serves a stripped 479 MB checkpoint, with
+identical weights, and settles at 853 MB (see `DECISIONS.md`, "Serve a stripped
+checkpoint"). What that means for concurrency is under item 4.

@@ -181,3 +181,6 @@ data/tokenizer.json
 data/packed_dataset/
 checkpoints/
 completions*.csv
+
+# Local notes on reaching the EC2 instance (key path, current public IP)
+loginInstructions.txt
