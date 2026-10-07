@@ -199,6 +199,15 @@ strangers can write rows. Until the port opens, only I can. Options to weigh
 then: a `hidden` flag the feed filters on, opt-in publishing, or listing only
 stories from preset prompts.
 
+*Revisited 2026-10-06, before opening the port: **manual moderation stays.**
+Traffic is still people following a link, and `/generate` is limited to 1/min
+per IP, so the feed is only as bad as the worst prompt someone types, and
+deleting it by hand is enough at that volume. The trigger to change is the first
+problematic prompt that reaches the feed: then add the `hidden` flag, so hiding
+a row is an `UPDATE` rather than a `DELETE`. Showing only preset-prompt stories
+was the one option that removes the risk outright rather than reacting to it,
+and was passed over for now.*
+
 ---
 
 ## 2026-09-14 — Usage logging: considered and dropped
@@ -379,3 +388,28 @@ during a generation. Host `available` memory during a generation: 538 MB.
 
 **Deployment note:** `CHECKPOINT_PATH` in `.env` must name the `-inference`
 file. The full checkpoint would still OOM the instance.
+
+---
+
+## 2026-09-29 — An Elastic IP for a stable address
+
+**Chose:** An Elastic IP associated with the `t3.small`, and `stories.gebrial.ca`
+as an A record pointing at it.
+
+**Considered:** Keeping the auto-assigned IP and updating the DNS record on every
+start, by hand or from a boot script calling a DNS provider's API.
+
+**Why:** The auto-assigned IP changed on the first stop and start, and the domain
+and the TLS certificate both need the name to reach the same machine every
+time. Updating by hand breaks the site whenever I forget; a boot script means
+moving DNS to a provider with an API and keeping credentials on the instance.
+
+**Cost:** AWS bills every public IPv4 at $0.005/hour, about $3.60/month. While the
+instance runs that is no extra, since the auto-assigned IP was billed the same.
+But an Elastic IP also bills while the instance is **stopped**, and stopping when
+idle is how this stays in budget.
+
+With the 30 GB root volume at about $2.40, fixed costs come to about $6/month
+before the instance runs at all, over the $5/month written down as the budget.
+*Accepted 2026-10-06: the $5 was never a hard limit, and the account is past any
+free tier, so nothing here is covered by one.*

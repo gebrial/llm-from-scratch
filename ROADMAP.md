@@ -25,10 +25,12 @@ The measurement did change things: the full checkpoint did not fit, and the fix
 was a first, small piece of item 5. HTTPS comes before the UI because the UI
 cannot call the API without it (item 1).
 
-**Constraint on every item below:** budget is $5/month and the `t3.small` is
-about $15/month, so the instance stops when idle rather than running
-continuously. Storage is billed while stopped: the 30 GB root volume is roughly
-$2.40/month, about half the budget, against about 5 GB actually needed.
+**Constraint on every item below:** the `t3.small` is about $15/month running,
+so the instance stops when idle rather than running continuously. The budget was
+written down as $5/month, but it was never a hard limit: on 2026-10-06 I
+accepted about $6/month in fixed costs, billed whether or not the instance runs
+(the account is past any free tier). That is the 30 GB root volume at roughly
+$2.40, against about 5 GB actually needed, and the Elastic IP at about $3.60.
 
 ### 1. Serve the API over HTTPS on a domain
 
@@ -54,6 +56,17 @@ proxy in front of uvicorn terminating TLS. Three things follow:
 
 All three were agent suggestions, promoted here 2026-09-23. The list below notes
 where they went.
+
+**Progress, 2026-09-29:** the Elastic IP is allocated and associated, and held
+across a stop and start. `stories.gebrial.ca` is an A record pointing at it (DNS
+at Squarespace, which took over Google Domains). What the Elastic IP costs the
+budget is in `DECISIONS.md`, "An Elastic IP for a stable address".
+
+**Progress, 2026-10-07:** moderation was revisited first and stays manual (see
+`DECISIONS.md`). Ports 80 and 443 are open to anyone; 22 and 8000 stay
+restricted to my IP, and 5432 has no rule. The instance's CPU credits are set to
+standard, so sustained load throttles it rather than billing for it (item 4).
+Remaining: TLS behind a reverse proxy, the proxy headers, and then closing 8000.
 
 ### 2. A React UI on GitHub Pages
 
@@ -99,7 +112,9 @@ and 907 MB while generating, leaving 538 MB `available` on the host. So:
   each takes about twice as long. Nobody is served sooner.
 - **Sustained 100% CPU spends CPU credits.** A `t3` in unlimited mode bills for
   running above its 20% baseline; in standard mode it throttles to it instead.
-  Cheap at demo traffic, but worth knowing which mode the instance is in.
+  *Set to standard 2026-10-07, before opening the port: with a per-IP rate
+  limit, many IPs could hold the CPU at 100%, and slow is a better failure than
+  a bill.*
 
 **Next, my own idea, 2026-09-29:** answer "busy" rather than start a second
 generation. A process-wide guard around the model: if a generation is already
