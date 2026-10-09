@@ -184,3 +184,6 @@ completions*.csv
 
 # Local notes on reaching the EC2 instance (key path, current public IP)
 loginInstructions.txt
+
+# My own study notes (review cards, interview prep), a separate local-only git repo
+study/
