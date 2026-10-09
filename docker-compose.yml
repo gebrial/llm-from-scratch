@@ -5,8 +5,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    # Loopback only: the api container reaches db over the compose network. This
+    # port is for uvicorn run on the host in local development, and for psql.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,8 +24,15 @@ services:
     env_file: .env
     environment:
       POSTGRES_HOST: db
+      # Trust X-Forwarded-For from any address, so request.client.host (and the
+      # rate limiter) sees the visitor rather than Caddy's container IP. Safe
+      # only because Caddy is the one thing that can reach this port from off
+      # the instance, and it overwrites any X-Forwarded-For a client sends.
+      FORWARDED_ALLOW_IPS: "*"
+    # Loopback only: the public reaches the API through Caddy, over the compose
+    # network. This port is for curl from an SSH session on the instance.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./checkpoints:/app/checkpoints:ro
       - ./data:/app/data:ro
@@ -32,5 +41,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificate lives in /data. Without a volume, every recreate would
+      # request a new one, and Let's Encrypt allows only 5 a week per name.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   pg_data:
+  caddy_data:
+  caddy_config:

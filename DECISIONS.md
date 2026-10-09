@@ -192,6 +192,13 @@ access turns out to be awkward once deployed, the fallback is a short script in
 `scripts/` that lists recent rows and deletes by id. An admin endpoint is
 deliberately not being built.
 
+*Corrected 2026-10-09: no production credentials on my laptop after all. Written
+before Postgres ran in compose on the instance. Now, from an SSH session there,
+`docker compose exec db psql -U <user> <db>` runs `psql` inside the database
+container itself, which the official image lets connect without a password. No
+port is involved, so it works with Postgres bound to `127.0.0.1`, and the SSH key
+is the only credential that leaves the server.*
+
 **Revisit before the API opens publicly** (`ROADMAP.md` item 1, HTTPS on a domain). Re-checked
 2026-09-23 when the feed was designed: the feed shows every stored story to every
 later visitor, so an unreviewed prompt stops being theoretical the moment
@@ -413,3 +420,46 @@ With the 30 GB root volume at about $2.40, fixed costs come to about $6/month
 before the instance runs at all, over the $5/month written down as the budget.
 *Accepted 2026-10-06: the $5 was never a hard limit, and the account is past any
 free tier, so nothing here is covered by one.*
+
+---
+
+## 2026-10-08 — Caddy as the reverse proxy for HTTPS
+
+**Chose:** Caddy, as a third compose service in front of the API. It is the only
+thing published to the internet, on 80 and 443, and it gets and renews a Let's
+Encrypt certificate for `stories.gebrial.ca` by itself from a three-line
+`Caddyfile`.
+
+**Considered:**
+
+- **nginx with certbot.** The industry standard, and the one most likely to come
+  up in an interview, but certbot's renewal and the nginx reload after it are a
+  moving part to wire up and keep working.
+- **Traefik.** Automatic certificates too, but built for discovering containers
+  dynamically, which one fixed backend does not need, and configured through
+  Docker labels.
+- **No proxy: uvicorn serving TLS itself.** Fewest pieces, and no forwarded-IP
+  problem, but a restart on every renewal and no HTTP-to-HTTPS redirect.
+- **An Application Load Balancer with AWS Certificate Manager.** About $16/month
+  or more on its own.
+- **CloudFront with AWS Certificate Manager.** Cheap at this traffic, but a CDN
+  this does not need, and its origin timeout rules it out (below).
+- **Cloudflare's proxy.** Means moving DNS off Squarespace.
+
+**Why:** Simplicity. Caddy is the least configuration, has no renewal to set up
+or get wrong, and costs nothing.
+
+**Also the timeout.** A story takes about a minute to generate on the
+`t3.small`, and every proxy limits how long it waits for the backend. nginx's
+`proxy_read_timeout` defaults to 60s, right at the edge, so some stories would
+come back as a 504 unless it were raised. CloudFront defaults to 30s, at most
+60s without a request to AWS, so every story would fail. Cloudflare's free plan
+allows 100s and cannot be changed. Caddy's reverse proxy has no response timeout
+by default, so it waits. The real fix is generation that is fast or does not
+hold the request open (`ROADMAP.md`, "Serve concurrent visitors without
+contention"), but a proxy should not be what breaks a minute-long request.
+
+**Consequence:** the certificate lives in the `caddy_data` volume, so
+`docker compose down -v` now deletes it along with the stories. Let's Encrypt
+issues at most 5 duplicate certificates a week per name, so losing it repeatedly
+while debugging would lock the domain out of HTTPS for days.
