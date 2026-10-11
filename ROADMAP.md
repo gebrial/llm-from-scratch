@@ -24,13 +24,14 @@ for it.
 
 ## Committed
 
-**Next:** R1, then R2, R3, R4, R5, R6.
+**Next:** R2, then R3, R4, R5, R6.
 
 **Order, decided 2026-09-23.** The read path came first because it was small and
 local, and the deploy came before the UI because it was the measurement. Both
 are done as of 2026-09-29 (see "Done" below). The measurement did change things:
 the full checkpoint did not fit, and the fix was a first, small piece of R5.
-HTTPS (R1) comes before the UI because the UI cannot call the API without it.
+HTTPS (R1) came before the UI because the UI cannot call the API without it,
+and is done as of 2026-10-11.
 
 **Constraint on every item below:** the `t3.small` is about $15/month running,
 so the instance stops when idle rather than running continuously. The budget was
@@ -38,42 +39,6 @@ written down as $5/month, but it was never a hard limit: on 2026-10-06 I
 accepted about $6/month in fixed costs, billed whether or not the instance runs
 (the account is past any free tier). That is the 30 GB root volume at roughly
 $2.40, against about 5 GB actually needed, and the Elastic IP at about $3.60.
-
-### R1. Serve the API over HTTPS on a domain
-
-**Forces it:** R2 puts the UI on GitHub Pages, which serves only over HTTPS,
-and browsers block an HTTPS page from calling a plain-HTTP API as mixed content.
-So the API needs a domain and a TLS certificate before the UI can reach it.
-
-**Changes:** A subdomain of `gebrial.ca` pointing at the instance, with a reverse
-proxy in front of uvicorn terminating TLS. Three things follow:
-
-- **An Elastic IP**, because the public IP changes on every stop and start and a
-  DNS record needs a stable target. An Elastic IP is billed while its instance
-  is stopped, which counts against the budget.
-- **The port opens publicly**, since visitors' browsers call the API directly.
-  Rate limiting exists, which was the condition for opening it. Moderation is
-  the other condition: once strangers can write rows, the feed shows their
-  prompts to everyone. Revisit per the unreviewed-publishing entry in
-  `DECISIONS.md` before opening.
-- **The rate limiter must see the real client IP.** Behind a proxy every request
-  arrives from the proxy's address, so the limiter would treat all visitors as
-  one and share 1/min between them. uvicorn needs `--proxy-headers` and to trust
-  the proxy's forwarded address.
-
-All three were agent suggestions, promoted here 2026-09-23. The list below notes
-where they went.
-
-**Progress, 2026-09-29:** the Elastic IP is allocated and associated, and held
-across a stop and start. `stories.gebrial.ca` is an A record pointing at it (DNS
-at Squarespace, which took over Google Domains). What the Elastic IP costs the
-budget is in `DECISIONS.md`, "An Elastic IP for a stable address".
-
-**Progress, 2026-10-07:** moderation was revisited first and stays manual (see
-`DECISIONS.md`). Ports 80 and 443 are open to anyone; 22 and 8000 stay
-restricted to my IP, and 5432 has no rule. The instance's CPU credits are set to
-standard, so sustained load throttles it rather than billing for it (R4).
-Remaining: TLS behind a reverse proxy, the proxy headers, and then closing 8000.
 
 ### R2. A React UI on GitHub Pages
 
@@ -219,7 +184,8 @@ real.
 
 Three of the original ten were promoted to committed R1 on 2026-09-23, once
 putting the UI on GitHub Pages made them necessary: an Elastic IP, opening the
-port publicly, and HTTPS on a subdomain of `gebrial.ca`.
+port publicly, and HTTPS on a subdomain of `gebrial.ca`. All three are done
+as of 2026-10-11 (see "Done" below).
 
 1. **Store the checkpoint in S3** rather than copying it to the instance with
    `scp`.
@@ -325,3 +291,23 @@ the training checkpoint was 1436 MB, two thirds of it optimizer state that
 inference never reads. The API now serves a stripped 479 MB checkpoint, with
 identical weights, and settles at 853 MB (see `DECISIONS.md`, "Serve a stripped
 checkpoint"). What that means for concurrency is under R4.
+
+**R1. Serving the API over HTTPS on a domain**, done 2026-10-11. Forced by the
+UI: GitHub Pages serves only over HTTPS, and browsers block an HTTPS page calling
+a plain-HTTP API. The API is now at `https://stories.gebrial.ca`:
+
+- **An Elastic IP**, so the address survives a stop and start, and an A record
+  for `stories.gebrial.ca` at Squarespace pointing at it. It bills while the
+  instance is stopped (`DECISIONS.md`, "An Elastic IP for a stable address").
+- **Moderation revisited before opening**, and it stays manual
+  (`DECISIONS.md`, the unreviewed-publishing entry). CPU credits set to
+  standard, so sustained load throttles rather than bills (R4).
+- **Ports 80 and 443 open to anyone**, to Caddy, which gets and renews a Let's
+  Encrypt certificate and redirects HTTP to HTTPS (`DECISIONS.md`, "Caddy as
+  the reverse proxy for HTTPS"). The API and Postgres ports are bound to
+  loopback, and the security group's 8000 rule was removed, so Caddy is the only
+  public entry point. SSH stays restricted to my IP.
+- **The rate limiter sees real visitors.** uvicorn trusts Caddy's
+  `X-Forwarded-For`, verified by the access log showing my public IP rather
+  than a container address, and a second `/generate` within a minute getting a
+  429.
