@@ -199,7 +199,7 @@ container itself, which the official image lets connect without a password. No
 port is involved, so it works with Postgres bound to `127.0.0.1`, and the SSH key
 is the only credential that leaves the server.*
 
-**Revisit before the API opens publicly** (`ROADMAP.md` item 1, HTTPS on a domain). Re-checked
+**Revisit before the API opens publicly** (`ROADMAP.md` R1, HTTPS on a domain). Re-checked
 2026-09-23 when the feed was designed: the feed shows every stored story to every
 later visitor, so an unreviewed prompt stops being theoretical the moment
 strangers can write rows. Until the port opens, only I can. Options to weigh

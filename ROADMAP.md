@@ -6,6 +6,12 @@ file is the other half, and the two point at each other.
 Each item says **what forces it** and **what it changes**, so that nothing sits
 here as a vague intention.
 
+**Item IDs are permanent.** A committed item gets the next ID (`R1`, `R2`, …)
+when it is added, keeps it when it is done, and the ID is never reused. Order
+lives only in the "Next" line under "Committed", so changing priorities or
+finishing an item does not renumber anything else. Introduced 2026-10-11; items
+finished before then have no ID.
+
 **Why there are two lists.** This project has been built with an AI agent, and a
 lot of what looked like a plan turned out to be agent suggestions that were never
 ruled on. Recovered from the build transcripts on 2026-09-14: four items I had
@@ -18,12 +24,13 @@ for it.
 
 ## Committed
 
+**Next:** R1, then R2, R3, R4, R5, R6.
+
 **Order, decided 2026-09-23.** The read path came first because it was small and
 local, and the deploy came before the UI because it was the measurement. Both
-are done as of 2026-09-29 (see "Done" below), and the items were renumbered then.
-The measurement did change things: the full checkpoint did not fit, and the fix
-was a first, small piece of item 5. HTTPS comes before the UI because the UI
-cannot call the API without it (item 1).
+are done as of 2026-09-29 (see "Done" below). The measurement did change things:
+the full checkpoint did not fit, and the fix was a first, small piece of R5.
+HTTPS (R1) comes before the UI because the UI cannot call the API without it.
 
 **Constraint on every item below:** the `t3.small` is about $15/month running,
 so the instance stops when idle rather than running continuously. The budget was
@@ -32,9 +39,9 @@ accepted about $6/month in fixed costs, billed whether or not the instance runs
 (the account is past any free tier). That is the 30 GB root volume at roughly
 $2.40, against about 5 GB actually needed, and the Elastic IP at about $3.60.
 
-### 1. Serve the API over HTTPS on a domain
+### R1. Serve the API over HTTPS on a domain
 
-**Forces it:** Item 2 puts the UI on GitHub Pages, which serves only over HTTPS,
+**Forces it:** R2 puts the UI on GitHub Pages, which serves only over HTTPS,
 and browsers block an HTTPS page from calling a plain-HTTP API as mixed content.
 So the API needs a domain and a TLS certificate before the UI can reach it.
 
@@ -65,10 +72,10 @@ budget is in `DECISIONS.md`, "An Elastic IP for a stable address".
 **Progress, 2026-10-07:** moderation was revisited first and stays manual (see
 `DECISIONS.md`). Ports 80 and 443 are open to anyone; 22 and 8000 stay
 restricted to my IP, and 5432 has no rule. The instance's CPU credits are set to
-standard, so sustained load throttles it rather than billing for it (item 4).
+standard, so sustained load throttles it rather than billing for it (R4).
 Remaining: TLS behind a reverse proxy, the proxy headers, and then closing 8000.
 
-### 2. A React UI on GitHub Pages
+### R2. A React UI on GitHub Pages
 
 **Forces it:** Recorded in `INTERVIEW-HANDOFF.md` as a decision taken 2026-09-12.
 It supersedes the brief's line about frontend being out of scope, which was
@@ -84,7 +91,7 @@ asleep, so the UI should say so rather than time out. This covers most of the
 deferred static failover page below. Serving the UI from the instance instead
 would avoid CORS, but would still need HTTPS and would go down with the API.
 
-### 3. Auth (OAuth)
+### R3. Auth (OAuth)
 
 **Forces it:** The brief names OAuth. I ordered it after the compose-fold so that
 deployment is not waiting on it. It sits after the UI because a sign-in flow
@@ -94,7 +101,7 @@ needs somewhere to sign in.
 remote IP, which `DECISIONS.md` already anticipates. The `stories` table gains an
 owner column so a signed-in user can see their own past prompts.
 
-### 4. Serve concurrent visitors without contention
+### R4. Serve concurrent visitors without contention
 
 **Forces it:** Generation is slow, so two visitors at once contend for the same
 hardware. `/generate` is a synchronous path operation, so FastAPI already runs it
@@ -121,7 +128,7 @@ generation. A process-wide guard around the model: if a generation is already
 running, `/generate` returns at once with a distinct status and the UI says to
 try again shortly. Unlike the rate limiter, this is global rather than per-IP,
 which is where the contention actually is. Undecided: the status code and body,
-whether to hold a short queue before refusing, and how the UI (item 2) shows it.
+whether to hold a short queue before refusing, and how the UI (R2) shows it.
 
 **Also the per-request cost itself.** Generation re-runs the whole sequence
 through the model for every new token (`components/generatetext.py` keeps no
@@ -149,7 +156,7 @@ machine, which the budget does not allow.
 Related: both `Open:` flags in `DECISIONS.md`, on the rate limiter and on the
 store, are this same question.
 
-### 5. Separate the training code from the serving code
+### R5. Separate the training code from the serving code
 
 **Forces it:** Decided 2026-09-20. `src/model_service.py` imports `LitGPTModel`
 from `scripts/train.py`, so serving reaches into training code and needs a
@@ -177,9 +184,9 @@ irreducible for inference, while the entire severable cluster -- the `datasets`
 stack at ~165 MB, `matplotlib` at 34 MB, `lightning` and `torchtune` and
 `torchao` at 28 MB between them -- is worth about 200 MB. The reasons are
 coupling and start-up memory, the latter mattering on a 2 GB `t3.small` where the
-loaded model already takes 853 MB. Related to item 4.
+loaded model already takes 853 MB. Related to R4.
 
-### 6. Turn-taking stories
+### R6. Turn-taking stories
 
 **Forces it:** My own idea, 2026-09-23. A visitor and the model take turns
 writing a story: the visitor writes the first sentence, the model the next, and
@@ -210,7 +217,7 @@ and I never said yes or no. They are listed so they stop being invisible, not
 because they are planned. Several are ten-second decisions once the deployment is
 real.
 
-Three of the original ten were promoted to committed item 1 on 2026-09-23, once
+Three of the original ten were promoted to committed R1 on 2026-09-23, once
 putting the UI on GitHub Pages made them necessary: an Elastic IP, opening the
 port publicly, and HTTPS on a subdomain of `gebrial.ca`.
 
@@ -228,7 +235,7 @@ port publicly, and HTTPS on a subdomain of `gebrial.ca`.
      PyTorch's cpu index. Result: 14.5 GB down to 2.91 GB, of which the torch
      layer is 1.13 GB and the requirements layer 815 MB.
    - **Severing `torchtune` and `lightning`** would drop the `datasets` stack
-     (~165 MB), but that is committed item 5 above and is motivated by coupling
+     (~165 MB), but that is committed R5 above and is motivated by coupling
      rather than by size.
    - **A separate requirements file for the API**, without `matplotlib`, which
      nothing on the request path imports. `datasets` cannot be dropped this way,
@@ -237,7 +244,7 @@ port publicly, and HTTPS on a subdomain of `gebrial.ca`.
    Multi-stage builds, the original suggestion, are not needed for any of these.
 5. **Request queuing or dynamic batching.** The brief asked for "rate limiting or
    request queuing" and rate limiting satisfied that. This overlaps with
-   committed item 4 above, where batching is one of the things a separate
+   committed R4 above, where batching is one of the things a separate
    inference service enables.
 6. **Scope down the IAM policy** from `AdministratorAccess`.
 7. **Add SQLAlchemy.** Raw `psycopg` was chosen first. Worth noting that
@@ -255,14 +262,14 @@ resolved by `bb4a8bc` on 2026-08-28 and is not outstanding.
 server to generate new stories and a database to store them. Existing stories
 could be published statically, but generating them still requires a server
 somewhere, so it does not remove the requirement. This rules out Pages as the
-host for the whole project, not for the frontend alone: committed item 2 puts
+host for the whole project, not for the frontend alone: committed R2 puts
 the static React UI on Pages, calling the API on the instance.
 
 **GraphQL**, decided 2026-09-14. Not a fit for this project as it stands. The
 model continues a story from an opening line rather than holding a conversation.
 It would become worth revisiting if the model were expanded into something
 conversational, for instance alternating sentences between the user and the
-model. *That condition came up 2026-09-23 as committed item 6, turn-taking
+model. *That condition came up 2026-09-23 as committed R6, turn-taking
 stories. Whether it changes the answer on GraphQL is not yet decided.*
 
 **Lambda as the deploy target.** Ruled out by an agent early, on cold starts and
@@ -282,7 +289,7 @@ and an admin endpoint for moderation.
 
 **A static failover page** on S3 with a Route 53 health check, so something is
 served while the instance is stopped. Agreed as a stretch goal after a plain EC2
-deploy works. Mostly covered by committed item 2 since 2026-09-23: a UI on Pages
+deploy works. Mostly covered by committed R2 since 2026-09-23: a UI on Pages
 is always served and can report the API as asleep. What would remain is showing
 existing stories while the instance is stopped, which would need them published
 somewhere static.
@@ -317,4 +324,4 @@ The point was the measurement, and it paid off. The first start was OOM-killed:
 the training checkpoint was 1436 MB, two thirds of it optimizer state that
 inference never reads. The API now serves a stripped 479 MB checkpoint, with
 identical weights, and settles at 853 MB (see `DECISIONS.md`, "Serve a stripped
-checkpoint"). What that means for concurrency is under item 4.
+checkpoint"). What that means for concurrency is under R4.
