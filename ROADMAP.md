@@ -56,6 +56,16 @@ asleep, so the UI should say so rather than time out. This covers most of the
 deferred static failover page below. Serving the UI from the instance instead
 would avoid CORS, but would still need HTTPS and would go down with the API.
 
+**Undecided, as of 2026-10-11:**
+
+- Where the UI code lives: a folder in this repo, or a separate repo.
+- The Pages origin, `gebrial.github.io` or a custom domain. It is also the
+  entry in the CORS allow-list.
+- Tooling: build setup, and JavaScript or TypeScript.
+- How the UI handles a generation that takes about a minute, a 429, and an API
+  that is asleep because the instance is stopped. The busy guard (R4) would add
+  a fourth case.
+
 ### R3. Auth (OAuth)
 
 **Forces it:** The brief names OAuth. I ordered it after the compose-fold so that
