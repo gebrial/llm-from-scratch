@@ -109,10 +109,12 @@ lives; what OAuth is actually protecting here; why this AWS deployment shape and
 a simpler one; what is in the Docker image and what deliberately is not.
 
 **A warning from elsewhere in his portfolio, because it is the exact failure to avoid:**
-`clubhouseBookings` is a substantial Next.js/React app of his — and it is **one single
-commit with no ADRs and no decision history.** As interview evidence that is a
-liability rather than an asset, because there is no way to answer "what did *you*
-decide?" from it. Do not let this project end up in the same state.
+`clubhouseBookings` is a Next.js/React app in a local folder, not on GitHub — about a day of work, mostly
+written by AI, and he remembers little of it (*corrected 2026-10-11; an earlier
+version called it "substantial"*). It is **one single commit with no ADRs and no
+decision history.** As interview evidence that is a liability rather than an asset,
+because there is no way to answer "what did *you* decide?" from it, and it is not
+evidence of Next.js or React skill. Do not let this project end up in the same state.
 
 ### 2. A React UI that earns its patterns honestly
 

@@ -24,14 +24,16 @@ for it.
 
 ## Committed
 
-**Next:** R2, then R3, R4, R5, R6.
+**Next:** R2, then R9, R8, R3, R4, R5, R6, R7.
 
 **Order, decided 2026-09-23.** The read path came first because it was small and
 local, and the deploy came before the UI because it was the measurement. Both
 are done as of 2026-09-29 (see "Done" below). The measurement did change things:
 the full checkpoint did not fit, and the fix was a first, small piece of R5.
 HTTPS (R1) came before the UI because the UI cannot call the API without it,
-and is done as of 2026-10-11.
+and is done as of 2026-10-11. R9 and R8 were moved ahead of R3 on 2026-10-11:
+both are small next to it, build directly on R2, and R8 is the change visitors
+notice most. R7 stays last because it needs an automatic idle stop as well.
 
 **Constraint on every item below:** the `t3.small` is about $15/month running,
 so the instance stops when idle rather than running continuously. The budget was
@@ -56,15 +58,18 @@ asleep, so the UI should say so rather than time out. This covers most of the
 deferred static failover page below. Serving the UI from the instance instead
 would avoid CORS, but would still need HTTPS and would go down with the API.
 
-**Undecided, as of 2026-10-11:**
+**Decided 2026-10-11** (reasons in `DECISIONS.md`):
 
-- Where the UI code lives: a folder in this repo, or a separate repo.
-- The Pages origin, `gebrial.github.io` or a custom domain. It is also the
-  entry in the CORS allow-list.
-- Tooling: build setup, and JavaScript or TypeScript.
-- How the UI handles a generation that takes about a minute, a 429, and an API
-  that is asleep because the instance is stopped. The busy guard (R4) would add
-  a fourth case.
+- A folder in this repo; Vite + React + TypeScript, no framework.
+- The UI takes `https://stories.gebrial.ca`, the CORS allow-list entry. The API
+  moves to `stories-api.gebrial.ca` first; then the `stories` A record becomes a
+  CNAME to `gebrial.github.io` and leaves the Caddyfile. `gebrial.ca` is
+  verified in GitHub against subdomain takeover.
+- The API URL is build-time config, not a literal.
+- Failure cases: `/ping` with a short timeout on load, and an "asleep" message
+  with the form disabled; one request for the minute-long generation with an
+  elapsed counter and an abort ceiling; a plain message on 429; one generic
+  error for everything else. The busy guard (R4) adds its own case.
 
 ### R3. Auth (OAuth)
 
@@ -74,7 +79,9 @@ needs somewhere to sign in.
 
 **Changes:** Once users exist, the rate limiter keys on the user rather than the
 remote IP, which `DECISIONS.md` already anticipates. The `stories` table gains an
-owner column so a signed-in user can see their own past prompts.
+owner column so a signed-in user can see their own past prompts. Any session
+cookie must be host-only (no `Domain` attribute), or it reaches every
+`gebrial.ca` subdomain and undoes R2's dedicated origin.
 
 ### R4. Serve concurrent visitors without contention
 
@@ -182,6 +189,35 @@ it.
 - `CONTEXT.md` gains a term for a turn, and "story" needs to cover both kinds.
 
 This is also the revisit condition recorded under GraphQL in "Ruled out" below.
+
+### R7. Wake the instance from the UI
+
+**Forces it:** My own idea, 2026-10-11, from R2. Most visitors find the API
+asleep; R2 only says so.
+
+**Changes:** Something always on, with AWS credentials, that starts the
+instance, such as a Lambda behind a Function URL, with IAM scoped to that one
+instance. The instance is stopped by hand in the console today, so R7 also needs
+an automatic idle stop. Worst-case abuse is the instance running all month,
+about $15, since CPU credits are standard.
+
+### R8. Stream generated stories
+
+**Forces it:** Decided 2026-10-11, from R2, which waits a minute for one
+response.
+
+**Changes:** Generation becomes a generator and the API streams tokens (SSE or
+`StreamingResponse`); the UI appends them as they arrive. Errors after the
+`200` has gone out must be signalled in the body, and the database write moves
+to the end of the stream.
+
+### R9. A countdown on 429
+
+**Forces it:** Decided 2026-10-11, from R2, which shows a plain message.
+
+**Changes:** `headers_enabled=True` on the limiter, which needs a `response:
+Response` parameter on limited endpoints, and `Retry-After` in the CORS
+`expose_headers`, or JS cannot read it.
 
 ---
 

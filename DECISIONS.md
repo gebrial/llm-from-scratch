@@ -463,3 +463,34 @@ contention"), but a proxy should not be what breaks a minute-long request.
 `docker compose down -v` now deletes it along with the stories. Let's Encrypt
 issues at most 5 duplicate certificates a week per name, so losing it repeatedly
 while debugging would lock the domain out of HTTPS for days.
+
+## 2026-10-11 — The UI on its own subdomain, and the API moves
+
+**Chose:** The UI's code in a folder in this repo, served by GitHub
+Pages at `stories.gebrial.ca`. The API moves to `stories-api.gebrial.ca`.
+
+**Considered:** A separate repo. `gebrial.github.io`, or the path
+`www.gebrial.ca/llm-from-scratch/` that my other Pages projects use. Keeping
+the API at `stories` and giving the UI another name.
+
+**Why:** One repo keeps the CORS change and the UI code that needs it in one
+commit. A dedicated origin keeps this site's `localStorage` and cookies apart
+from my other projects once auth (R3) adds credentials; `github.io` would also
+make the API's cookies third-party. The UI gets the name people visit, and the
+swap was cheap while nothing called the API by name.
+
+## 2026-10-11 — Vite + React + TypeScript, no framework
+
+**Chose:** A Vite SPA from the `react-ts` template.
+
+**Considered:** webpack, Parcel, Rsbuild/Rspack. Next.js or another framework,
+either on the instance or as a static export.
+
+**Why:** Vite is the default that React's docs, examples and recent codebases
+use, which matters most while learning React; Vitest shares its config. Static
+output and env config are not reasons, since every option has them. A
+framework's value is server rendering, routing and server features: the data is
+all dynamic from an API that is often asleep, there are one or two screens, and
+FastAPI is already the server. On the instance, a framework would also go down
+with it. TypeScript over JavaScript because it is my strong side, so React is
+the only new thing.
