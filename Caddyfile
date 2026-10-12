@@ -4,3 +4,7 @@
 stories.gebrial.ca {
 	reverse_proxy api:8000
 }
+
+stories-api.gebrial.ca {
+	reverse_proxy api:8000
+}
