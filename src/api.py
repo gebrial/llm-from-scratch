@@ -4,6 +4,7 @@ import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Annotated
 from datetime import datetime
@@ -18,6 +19,20 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+# The UI is a different origin from the API, so the browser hides the API's
+# responses from it unless they name its origin. Exact origins only: "*" would
+# let any website read them, and cannot be combined with cookies (R3).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://stories.gebrial.ca",  # the UI on GitHub Pages
+        "http://localhost:5173",  # the Vite dev server, pinned in web/vite.config.ts
+    ],
+    # The default is GET only. POST /generate sends JSON, which makes the
+    # browser ask first with a preflight OPTIONS request; Content-Type is
+    # always allowed by Starlette, so the method is the only thing to add.
+    allow_methods=["GET", "POST"],
+)
 
 # Neither the checkpoint nor the tokenizer is baked into the image -- the
 # Dockerfile copies only src/ and scripts/, so in a container both of these

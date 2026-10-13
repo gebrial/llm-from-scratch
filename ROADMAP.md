@@ -81,7 +81,9 @@ needs somewhere to sign in.
 remote IP, which `DECISIONS.md` already anticipates. The `stories` table gains an
 owner column so a signed-in user can see their own past prompts. Any session
 cookie must be host-only (no `Domain` attribute), or it reaches every
-`gebrial.ca` subdomain and undoes R2's dedicated origin.
+`gebrial.ca` subdomain and undoes R2's dedicated origin. The CORS allow-list
+must also drop `localhost` in production, read from config, or anything on a
+signed-in visitor's own machine at that port could read their data.
 
 ### R4. Serve concurrent visitors without contention
 
