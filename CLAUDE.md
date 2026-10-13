@@ -18,7 +18,7 @@ frontend), so the person building it has to be able to explain every part of it.
 
 ## The API
 
-Live at `https://stories.gebrial.ca`. Routes are in `src/api.py`; `/docs` has the
+Live at `https://stories-api.gebrial.ca`. Routes are in `src/api.py`; `/docs` has the
 generated OpenAPI page.
 
 - `GET /ping` → `{"status": "ok"}`. Not rate limited.
@@ -29,7 +29,8 @@ generated OpenAPI page.
   newest first; `limit` 1–50. Rate limited to 60/min per IP.
 - Over a limit: **429** with `{"error": "Rate limit exceeded: 1 per 1 minute"}`
   (slowapi's default body).
-- No CORS configured yet.
+- CORS allows `https://stories.gebrial.ca` (the UI) and `http://localhost:5173`
+  (the Vite dev server, port pinned), methods GET and POST.
 
 ## Deployment
 
@@ -42,6 +43,9 @@ generated OpenAPI page.
   The instance only gets code through git.
 - The API serves a stripped `*-inference.ckpt` checkpoint; the full training
   checkpoint OOMs the instance (`DECISIONS.md`).
+- The UI is in `web/` (Vite + React + TypeScript), deployed to GitHub Pages at
+  `https://stories.gebrial.ca` by `.github/workflows/pages.yml` on pushes that
+  change `web/`. It stays up while the instance is stopped.
 - Caddy's certificate lives in the `caddy_data` volume. Do not suggest
   `docker compose down -v` or repeatedly recreating `caddy` while it is failing:
   Let's Encrypt issues at most 5 duplicate certificates a week.
