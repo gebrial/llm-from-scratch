@@ -1,0 +1,57 @@
+# Builds the UI in web/ and publishes it to GitHub Pages at stories.gebrial.ca.
+# The custom domain is set in the repo's Pages settings, not in a CNAME file,
+# because Pages deployed from Actions ignores one.
+name: Deploy UI to Pages
+
+on:
+  push:
+    branches: [main]
+    # Only UI changes redeploy the UI; API-only commits leave it alone.
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+  # A "Run workflow" button, for redeploying without a commit.
+  workflow_dispatch:
+
+# What the job's GITHUB_TOKEN may do: read the repo, publish to Pages, and
+# prove to Pages which workflow run is deploying (id-token).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. A newer push waits rather than cancelling one that is
+# halfway through publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # npm ci installs exactly what package-lock.json says, and fails if it
+      # disagrees with package.json, unlike npm install, which may update it.
+      - run: npm ci
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
