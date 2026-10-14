@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { API_URL } from "./api"
 
 type Story = {
     prompt: string,
@@ -20,7 +21,7 @@ export default function StoriesFeed() {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch("https://stories-api.gebrial.ca/stories", {signal: controller.signal})
+    fetch(`${API_URL}/stories`, {signal: controller.signal})
       .then(res => {
         if (!res.ok) {
           throw(new Error(`get stories failed: ${res.status}`))

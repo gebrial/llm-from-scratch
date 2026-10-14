@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import StoriesFeed from './StoriesFeed'
+import { API_URL } from './api'
 
 type ServerStatus = "checking" | "ready" | "asleep"
 type AbortReason = "timeout" | "cleanup"
@@ -9,7 +10,7 @@ function App() {
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch("https://stories-api.gebrial.ca/ping", {signal: controller.signal})
+    fetch(`${API_URL}/ping`, {signal: controller.signal})
       .then(res => res.json())
       .then(status => {
         if (status.status === "ok") setServerStatus("ready")
