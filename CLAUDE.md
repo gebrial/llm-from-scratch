@@ -18,19 +18,8 @@ frontend), so the person building it has to be able to explain every part of it.
 
 ## The API
 
-Live at `https://stories-api.gebrial.ca`. Routes are in `src/api.py`; `/docs` has the
-generated OpenAPI page.
-
-- `GET /ping` → `{"status": "ok"}`. Not rate limited.
-- `POST /generate` with `{"prompt": "..."}` → the story as a **bare JSON string**,
-  not an object. The story begins with the prompt. Takes about a minute on the
-  instance, at 100% CPU. Rate limited to 1/min per IP.
-- `GET /stories?limit=20` → `{"stories": [{"prompt", "story", "created_at"}]}`,
-  newest first; `limit` 1–50. Rate limited to 60/min per IP.
-- Over a limit: **429** with `{"error": "Rate limit exceeded: 1 per 1 minute"}`
-  (slowapi's default body).
-- CORS allows `https://stories.gebrial.ca` (the UI) and `http://localhost:5173`
-  (the Vite dev server, port pinned), methods GET and POST.
+Live at `https://stories-api.gebrial.ca`. Routes, response shapes, rate limits
+and CORS are in `src/api.py`; `/docs` has the generated OpenAPI page.
 
 ## Deployment
 

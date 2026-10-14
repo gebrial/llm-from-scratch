@@ -509,3 +509,16 @@ gets its own cache; parameter names are unchanged, so checkpoints still load.
 **Why:** Only `top_p` is served. Beam search would also need the cache
 reordered to follow the surviving beams every step. The cached path was checked
 against the uncached one: logits agree to 7e-06, and seeded stories match.
+
+## 2026-10-13 — Caddy only under a `prod` Compose profile
+
+**Chose:** `profiles: ["prod"]` on `caddy`, switched on by
+`COMPOSE_PROFILES=prod` in the instance's `.env`. A plain `up` locally starts
+only `db` and `api`; the deploy command is unchanged.
+
+**Considered:** Naming `db api` in the README's local command.
+`docker-compose.override.yml`.
+
+**Why:** Caddy is useless locally, and would keep failing to get a certificate
+for a domain that does not point at the machine. A profile makes the safe
+command the default one, rather than relying on remembering to name services.
