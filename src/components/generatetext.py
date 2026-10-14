@@ -108,13 +108,16 @@ def top_p_sampling(model, tokenizer, prompt, top_p=0.95, temperature=1.0, max_le
     prompt_tokens = tokenizer.encode(prompt).ids
     input_ids = torch.tensor(prompt_tokens, device=device).unsqueeze(0)
 
-    for _ in range(max_length - len(prompt_tokens)):
-        num_tokens = input_ids.size(1)
-        full_attn_mask = torch.ones((1, num_tokens, num_tokens), device=device)
-        positions = torch.arange(num_tokens, device=device).unsqueeze(0).expand_as(input_ids)
+    # the first pass runs the whole prompt and fills the KV cache; every pass after
+    # that runs only the token just sampled, at its position in the story
+    new_tokens = input_ids
+    positions = torch.arange(input_ids.size(1), device=device).unsqueeze(0)
+    past_kv = None
 
+    for _ in range(max_length - len(prompt_tokens)):
         with torch.no_grad():
-            logits = model([input_ids, full_attn_mask, positions])[:, -1, :]
+            logits, past_kv = model([new_tokens, None, positions], past_kv=past_kv, use_cache=True)
+        logits = logits[:, -1, :]
 
         logits = (logits / temperature).squeeze(0)
         probs = torch.softmax(logits, dim=-1)
@@ -130,6 +133,8 @@ def top_p_sampling(model, tokenizer, prompt, top_p=0.95, temperature=1.0, max_le
         input_ids = torch.cat([input_ids, sampled_token], dim=-1)
         if sampled_token.item() == eot_token_id:
             break
+        new_tokens = sampled_token
+        positions = torch.tensor([[input_ids.size(1) - 1]], device=device)
 
     output_tokens = input_ids.squeeze(0).tolist()
     # drop the trailing end-of-text token, if generation stopped because of one

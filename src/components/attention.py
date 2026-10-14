@@ -26,7 +26,13 @@ class MultiHeadAttention(nn.Module):
         self.dropout = dropout
         self.rope = RotaryPositionalEmbeddings(self.head_dim, context_length)
 
-    def forward(self, inp):
+    def forward(self, inp, kv_cache=None):
+        """
+        attn_mask: a packed-sequence mask, as in training, or None for a single
+        story -- then attention is plain causal, offset past any cached keys.
+        kv_cache: this layer's (keys, values) from earlier calls, or None. Only
+        valid with attn_mask=None. Returns (output, updated kv_cache).
+        """
         x, attn_mask, positions = inp
         b, num_tokens, _ = x.shape
 
@@ -42,13 +48,27 @@ class MultiHeadAttention(nn.Module):
         queries = queries.transpose(1, 2)
         values = values.transpose(1, 2)
 
-        # combine the packed-sequence mask with an explicit causal mask, since
-        # SDPA raises if both is_causal and attn_mask are set at the same time
-        causal_mask = torch.tril(
-            torch.ones(num_tokens, num_tokens, device=x.device)
-        ).bool()
-        attn_mask = attn_mask.view(b, 1, num_tokens, num_tokens)
-        attn_mask = torch.logical_and(attn_mask, causal_mask).view(b, 1, num_tokens, num_tokens)
+        # keys are cached after RoPE, so each one keeps the rotation for its own position
+        if kv_cache is not None:
+            past_keys, past_values = kv_cache
+            keys = torch.cat([past_keys, keys], dim=2)
+            values = torch.cat([past_values, values], dim=2)
+        kv_cache = (keys, values)
+
+        if attn_mask is not None:
+            # combine the packed-sequence mask with an explicit causal mask, since
+            # SDPA raises if both is_causal and attn_mask are set at the same time
+            causal_mask = torch.tril(
+                torch.ones(num_tokens, num_tokens, device=x.device)
+            ).bool()
+            attn_mask = attn_mask.view(b, 1, num_tokens, num_tokens)
+            attn_mask = torch.logical_and(attn_mask, causal_mask).view(b, 1, num_tokens, num_tokens)
+        else:
+            # queries are the last num_tokens positions, so shift the diagonal right by
+            # the cached length; for a single new token this lets it see every key
+            num_keys = keys.size(2)
+            attn_mask = torch.ones(num_tokens, num_keys, device=x.device, dtype=torch.bool)
+            attn_mask = attn_mask.tril(diagonal=num_keys - num_tokens)
 
         context_vec = nn.functional.scaled_dot_product_attention(
             queries, keys, values, attn_mask=attn_mask,
@@ -57,4 +77,4 @@ class MultiHeadAttention(nn.Module):
 
         # (b, num_heads, num_tokens, head_dim) -> (b, num_tokens, d_out)
         context_vec = context_vec.transpose(1, 2).contiguous().view(b, num_tokens, self.d_out)
-        return self.out_proj(context_vec)
+        return self.out_proj(context_vec), kv_cache

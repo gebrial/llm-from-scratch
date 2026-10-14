@@ -20,8 +20,10 @@ class GPTModel(nn.Module):
             self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
 
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
-        self.trf_blocks = nn.Sequential(
-            *[TransformerBlock(cfg) for _ in range(cfg["n_layers"])]
+        # a ModuleList rather than nn.Sequential, so forward() can pass each block its
+        # own KV cache; both name parameters trf_blocks.0..., so checkpoints still load
+        self.trf_blocks = nn.ModuleList(
+            [TransformerBlock(cfg) for _ in range(cfg["n_layers"])]
         )
         self.final_norm = nn.LayerNorm(cfg["emb_dim"])
 
@@ -30,7 +32,12 @@ class GPTModel(nn.Module):
             self.out_head.weight = self.tok_emb.weight
             self.out_head.bias = nn.Parameter(torch.zeros(cfg["vocab_size"]))
 
-    def forward(self, inp):
+    def forward(self, inp, past_kv=None, use_cache=False):
+        """
+        Returns logits, or (logits, kv caches) with use_cache=True. past_kv is the
+        list of per-layer caches from a previous call (None to start a new one);
+        caching needs attn_mask=None, i.e. a single story rather than a packed sequence.
+        """
         in_idx, attn_mask, positions = inp
         _, seq_len = in_idx.shape
 
@@ -39,6 +46,13 @@ class GPTModel(nn.Module):
             x = x + self.pos_emb(torch.arange(seq_len, device=in_idx.device))
 
         x = self.drop_emb(x)
-        x, _, _ = self.trf_blocks([x, attn_mask, positions])
+        if past_kv is None:
+            past_kv = [None] * len(self.trf_blocks)
+        new_kv = []
+        for block, kv_cache in zip(self.trf_blocks, past_kv):
+            x, kv_cache = block([x, attn_mask, positions], kv_cache=kv_cache)
+            new_kv.append(kv_cache)
+
         x = self.final_norm(x)
-        return self.out_head(x)
+        logits = self.out_head(x)
+        return (logits, new_kv) if use_cache else logits

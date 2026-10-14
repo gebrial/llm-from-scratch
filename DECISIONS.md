@@ -77,6 +77,9 @@ on different IPs can still both be generating at once. That is a separate
 problem from rationing, taken up in `ROADMAP.md`, "Serve concurrent visitors
 without contention".*
 
+*Re-derived 2026-10-13: **6/min.** The KV cache (its entry, below) brought one
+story down to about 8s locally; the instance figure is still to be measured.*
+
 **Open:** Where the counter lives. `slowapi` with no `storage_uri` configured —
 which is the current case — keeps its counters in memory, in the process. Two
 consequences follow: the counters reset on restart, and they are per-process,
@@ -494,3 +497,15 @@ all dynamic from an API that is often asleep, there are one or two screens, and
 FastAPI is already the server. On the instance, a framework would also go down
 with it. TypeScript over JavaScript because it is my strong side, so React is
 the only new thing.
+
+## 2026-10-13 — A KV cache for top-p generation only
+
+**Chose:** Cache each layer's keys and values (after RoPE) in `top_p_sampling`,
+the method the API uses. `trf_blocks` becomes an `nn.ModuleList` so each block
+gets its own cache; parameter names are unchanged, so checkpoints still load.
+
+**Considered:** Caching `beam_search` and greedy `generate_text` as well.
+
+**Why:** Only `top_p` is served. Beam search would also need the cache
+reordered to follow the surviving beams every step. The cached path was checked
+against the uncached one: logits agree to 7e-06, and seeded stories match.

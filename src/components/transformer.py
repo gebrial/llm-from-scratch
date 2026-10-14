@@ -20,12 +20,13 @@ class TransformerBlock(nn.Module):
         self.norm2 = nn.LayerNorm(cfg["emb_dim"])
         self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
 
-    def forward(self, inp):
+    def forward(self, inp, kv_cache=None):
+        """Returns (x, updated kv_cache) -- see MultiHeadAttention.forward."""
         x, attn_mask, positions = inp
 
         shortcut = x
         x = self.norm1(x)
-        x = self.att([x, attn_mask, positions])
+        x, kv_cache = self.att([x, attn_mask, positions], kv_cache=kv_cache)
         x = self.drop_shortcut(x)
         x = x + shortcut
 
@@ -35,4 +36,4 @@ class TransformerBlock(nn.Module):
         x = self.drop_shortcut(x)
         x = x + shortcut
 
-        return [x, attn_mask, positions]
+        return x, kv_cache

@@ -115,12 +115,10 @@ try again shortly. Unlike the rate limiter, this is global rather than per-IP,
 which is where the contention actually is. Undecided: the status code and body,
 whether to hold a short queue before refusing, and how the UI (R2) shows it.
 
-**Also the per-request cost itself.** Generation re-runs the whole sequence
-through the model for every new token (`components/generatetext.py` keeps no
-KV cache), so the work per story grows with the square of its length. A KV cache
-would make each new token cost one position rather than all of them, and is
-likely the largest single speed-up available on this hardware. It touches the
-model's attention code, so it would need checking against known outputs.
+**Also the per-request cost itself.** *A KV cache for `top_p_sampling`, added
+2026-10-13: 10× faster locally on 2 threads (`scripts/benchmark_generate.py`,
+310s → 30s for three stories), with the same stories from the same seeds. Not
+yet measured on the instance.*
 
 **The longer-term fork**, once the above is not enough:
 
