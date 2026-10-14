@@ -7,6 +7,12 @@ Lightning training) for pretraining a ~120M parameter model on the
 [TinyStories](https://huggingface.co/datasets/roneneldan/TinyStories) dataset
 to generate short children's stories.
 
+The trained model is served by a FastAPI API backed by Postgres, running in
+Docker Compose on AWS EC2 at `https://stories-api.gebrial.ca`, with a React UI
+at [stories.gebrial.ca](https://stories.gebrial.ca) for browsing the stories it
+has generated. The EC2 instance is stopped when idle, so the UI often reports
+the API as asleep.
+
 ## Running the API locally
 
 1. Copy `.env.example` to `.env` and fill in the variables appropriately (need a checkpoint path first, see the section below on training a model).
@@ -88,9 +94,37 @@ To stop everything, run `docker compose down`. Stored stories survive it, since
 they live in the `pg_data` volume. `docker compose down -v` deletes that volume,
 and every story with it.
 
+## Running the UI
+
+The UI in `web/` is a Vite + React + TypeScript app, live at
+`https://stories.gebrial.ca`. To run it locally, from `web/`:
+
+```
+npm install
+npm run dev
+```
+
+Then open `http://localhost:5173`. The port is pinned (`strictPort` in
+`vite.config.ts`) because the API's CORS allow-list names that exact origin.
+
+Which API the UI calls comes from `VITE_API_URL`. `npm run dev` reads
+`web/.env.development`, which points at a local API on `http://localhost:8000`
+(start it as in "Running the API locally" above). To develop against the
+deployed API instead, set `VITE_API_URL=https://stories-api.gebrial.ca` in
+`web/.env.development.local`, which is gitignored and takes precedence. Builds
+read `web/.env.production`. The UI pings the API on load and shows "Asleep" if
+there's no answer within 3 seconds, which is what you'll see while the EC2
+instance is stopped.
+
+`npm run build` type-checks and builds into `web/dist`, and `npm run lint` runs
+oxlint. Deploying needs no manual step: pushing to `main` with changes under
+`web/` triggers `.github/workflows/pages.yml`, which builds the UI and
+publishes it to GitHub Pages.
+
 ## Project layout
 
 ```
+web/              the React UI, deployed to GitHub Pages
 src/components/   the model itself: attention, transformer block, feedforward,
                   GPTModel, and text generation (top-p sampling, beam search, greedy)
 scripts/          CLI pipeline to reproduce a trained model end to end
