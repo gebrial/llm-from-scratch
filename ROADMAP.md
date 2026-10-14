@@ -24,7 +24,7 @@ for it.
 
 ## Committed
 
-**Next:** R2, then R9, R8, R3, R4, R5, R6, R7.
+**Next:** R2, then R9, R8, R3, R4, R5, R6, R7, R10.
 
 **Order, decided 2026-09-23.** The read path came first because it was small and
 local, and the deploy came before the UI because it was the measurement. Both
@@ -109,16 +109,12 @@ and 907 MB while generating, leaving 538 MB `available` on the host. So:
   a bill.*
 
 **Next, my own idea, 2026-09-29:** answer "busy" rather than start a second
-generation. A process-wide guard around the model: if a generation is already
-running, `/generate` returns at once with a distinct status and the UI says to
-try again shortly. Unlike the rate limiter, this is global rather than per-IP,
-which is where the contention actually is. Undecided: the status code and body,
-whether to hold a short queue before refusing, and how the UI (R2) shows it.
+generation. *Now R10.*
 
 **Also the per-request cost itself.** *A KV cache for `top_p_sampling`, added
 2026-10-13: 10× faster locally on 2 threads (`scripts/benchmark_generate.py`,
-310s → 30s for three stories), with the same stories from the same seeds. Not
-yet measured on the instance.*
+310s → 30s for three stories), with the same stories from the same seeds. About
+9s a story on the instance, down from a minute.*
 
 **The longer-term fork**, once the above is not enough:
 
@@ -212,6 +208,11 @@ response.
 `200` has gone out must be signalled in the body, and the database write moves
 to the end of the stream.
 
+*A client disconnecting must not stop generation, 2026-10-13: the story is
+stored either way. `StreamingResponse` stops iterating on disconnect, so
+generation runs apart from the response (e.g. a thread feeding a queue), and the
+R10 guard is released when generation ends, not when the stream does.*
+
 ### R9. A countdown on 429
 
 **Forces it:** Decided 2026-10-11, from R2, which shows a plain message.
@@ -219,6 +220,17 @@ to the end of the stream.
 **Changes:** `headers_enabled=True` on the limiter, which needs a `response:
 Response` parameter on limited endpoints, and `Retry-After` in the CORS
 `expose_headers`, or JS cannot read it.
+
+### R10. One generation at a time, visible to every client
+
+**Forces it:** Decided 2026-10-13, from R4: two generations at once split the
+two vCPUs, and a per-IP limit cannot stop two IPs.
+
+**Changes:** A process-wide guard around the model. While a generation runs,
+`/generate` refuses at once with a distinct status, and any client can see the
+model is busy before asking, so the UI disables generating until it is free.
+Undecided: the status code and body, how clients learn the state (in `/ping`,
+its own route, or pushed), and whether a short queue beats refusing.
 
 ---
 

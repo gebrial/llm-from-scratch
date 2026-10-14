@@ -7,6 +7,10 @@ generates the same number of tokens -- the timings are then directly comparable.
 
 Usage:
     python scripts/benchmark_generate.py checkpoints/run1/epoch=1-step=7042-inference.ckpt
+
+Loads its own copy of the model. On the 2 GB instance a second copy does not fit
+beside the running API, so `docker compose exec api` gets OOM-killed; stop the
+api service first, or time real /generate requests instead.
 """
 import argparse
 import time

@@ -78,7 +78,8 @@ problem from rationing, taken up in `ROADMAP.md`, "Serve concurrent visitors
 without contention".*
 
 *Re-derived 2026-10-13: **6/min.** The KV cache (its entry, below) brought one
-story down to about 8s locally; the instance figure is still to be measured.*
+story down to about 8s locally, and about 9s on the instance (three prompts,
+timed with curl).*
 
 **Open:** Where the counter lives. `slowapi` with no `storage_uri` configured —
 which is the current case — keeps its counters in memory, in the process. Two
