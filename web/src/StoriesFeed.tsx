@@ -47,10 +47,10 @@ export default function StoriesFeed() {
   if (storiesStatus.stories.length === 0) return <p>No Stories yet...</p>
   return (
     <>
-      <p>Stories:</p>
+      <p>Stories (bolded text is the prompt):</p>
       <ul>
         {storiesStatus.stories.map(story => {
-          return (<li key={story.created_at}>{story.story}</li>)
+          return (<li key={story.created_at}><b>{story.prompt}</b>{story.story.slice(story.prompt.length + 1)}</li>)
         })}
       </ul>
     </>
