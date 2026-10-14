@@ -59,6 +59,9 @@ class ModelService:
         method: "top_p" (default, empirically the best completions -- see
         components/generatetext.py), "beam", or "greedy".
         """
+        # A trailing space encodes as a lone "Ġ" token, which the model rarely saw
+        # before a word in training -- it derails the continuation (e.g. "a , there").
+        prompt = prompt.rstrip()
         if method == "top_p":
             return top_p_sampling(self.model, self.tokenizer, prompt, top_p=top_p,
                                    temperature=temperature, max_length=max_length)
