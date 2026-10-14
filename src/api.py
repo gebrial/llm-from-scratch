@@ -79,7 +79,7 @@ class GenerateRequest(BaseModel):
 
 @app.post("/generate")
 @limiter.limit("6/minute")
-def generate(request: Request, req: GenerateRequest):
+def generate(request: Request, req: GenerateRequest) -> str:
     story = model_service.generate(req.prompt)
     save_story(req.prompt, story)
     return story

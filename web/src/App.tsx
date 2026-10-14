@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import StoriesFeed from './StoriesFeed'
 import { API_URL } from './api'
+import GenerateForm from './GenerateForm'
 
 type ServerStatus = "checking" | "ready" | "asleep"
 type AbortReason = "timeout" | "cleanup"
@@ -35,6 +36,7 @@ function App() {
 
   return (
     <>
+    <GenerateForm />
     { 
       serverStatus === "checking" ? <p>Checking</p> : 
       (serverStatus === "ready" ? <StoriesFeed /> : <p>Asleep</p>)
