@@ -70,6 +70,7 @@ would avoid CORS, but would still need HTTPS and would go down with the API.
   with the form disabled; one request for the minute-long generation with an
   elapsed counter and an abort ceiling; a plain message on 429; one generic
   error for everything else. The busy guard (R4) adds its own case.
+- Added 2026-10-13: the stories feed from `GET /stories`, and styling.
 
 ### R3. Auth (OAuth)
 

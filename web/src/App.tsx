@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import StoriesFeed from './StoriesFeed'
 
 type ServerStatus = "checking" | "ready" | "asleep"
 type AbortReason = "timeout" | "cleanup"
@@ -35,7 +36,7 @@ function App() {
     <>
     { 
       serverStatus === "checking" ? <p>Checking</p> : 
-      (serverStatus === "ready" ? <p>Ready</p> : <p>Asleep</p>)
+      (serverStatus === "ready" ? <StoriesFeed /> : <p>Asleep</p>)
     }
     </>
   )
