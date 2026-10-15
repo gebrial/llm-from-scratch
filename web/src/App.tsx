@@ -35,13 +35,17 @@ function App() {
   }, [])
 
   return (
-    <>
+    <main className="app">
+    <header className="app-header">
+      <h1>TinyStories</h1>
+      <p>A small GPT, trained from scratch, that tells short stories.</p>
+    </header>
     <GenerateForm />
     { 
-      serverStatus === "checking" ? <p>Checking</p> : 
-      (serverStatus === "ready" ? <StoriesFeed /> : <p>Asleep</p>)
+      serverStatus === "checking" ? <p className="status">Checking</p> : 
+      (serverStatus === "ready" ? <StoriesFeed /> : <p className="status">Asleep</p>)
     }
-    </>
+    </main>
   )
 }
 

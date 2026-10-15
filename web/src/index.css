@@ -1,0 +1,181 @@
+:root {
+  --bg: #f7f3ea;
+  --surface: #fffdf8;
+  --text: #2b2620;
+  --muted: #7a6f62;
+  --border: #e4dccd;
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-soft: #fde7d6;
+  --shadow: 0 1px 2px rgb(60 40 20 / 0.06), 0 4px 12px rgb(60 40 20 / 0.05);
+
+  --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-story: Georgia, "Iowan Old Style", "Times New Roman", serif;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1915;
+    --surface: #26221d;
+    --text: #ece5d8;
+    --muted: #a39887;
+    --border: #3a342c;
+    --accent: #fb923c;
+    --accent-hover: #fdba74;
+    --accent-soft: #4a2c17;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layout */
+
+.app {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 3rem 1rem 4rem;
+}
+
+.app-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-family: var(--font-story);
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-header p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+/* Generate form */
+
+.generate-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.generate-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--font-story);
+  font-size: 1.05rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.generate-form input::placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.generate-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.generate-form button {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.generate-form button:hover {
+  background: var(--accent-hover);
+}
+
+.generate-form button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.generate-form button:disabled,
+.generate-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Stories */
+
+.story {
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-family: var(--font-story);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.story--new {
+  margin: 0 0 2.5rem;
+  border-color: var(--accent);
+}
+
+.story-prompt {
+  /* TODO(human): style how the prompt stands out from the model's continuation */
+}
+
+.feed-heading {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Status messages (checking, asleep, loading, empty) */
+
+.status {
+  margin: 2rem 0;
+  color: var(--muted);
+  text-align: center;
+  font-style: italic;
+}

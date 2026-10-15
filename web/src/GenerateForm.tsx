@@ -40,7 +40,7 @@ export default function GenerateForm() {
 
   return (
     <>
-      <form onSubmit={generateStory}>
+      <form className="generate-form" onSubmit={generateStory}>
         <input 
           onChange={e => setPromptInput(e.target.value)}
           value={promptInput}
@@ -50,7 +50,7 @@ export default function GenerateForm() {
       </form>
       {
         generateStatus.status === "finished" &&
-        <p>{ generateStatus.story }</p>
+        <p className="story story--new">{ generateStatus.story }</p>
       }
     </>
   )

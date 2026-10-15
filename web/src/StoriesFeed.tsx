@@ -43,15 +43,15 @@ export default function StoriesFeed() {
     }
   }, [])
 
-  if (storiesStatus.status === "loading") return <p>Stories loading...</p>
-  if (storiesStatus.status === "failed") return <p>Couldn't load stories</p>
-  if (storiesStatus.stories.length === 0) return <p>No Stories yet...</p>
+  if (storiesStatus.status === "loading") return <p className="status">Stories loading...</p>
+  if (storiesStatus.status === "failed") return <p className="status">Couldn't load stories</p>
+  if (storiesStatus.stories.length === 0) return <p className="status">No Stories yet...</p>
   return (
     <>
-      <p>Stories (bolded text is the prompt):</p>
-      <ul>
+      <h2 className="feed-heading">Recent stories</h2>
+      <ul className="feed">
         {storiesStatus.stories.map(story => {
-          return (<li key={story.created_at}><b>{story.prompt}</b>{story.story.slice(story.prompt.length + 1)}</li>)
+          return (<li className="story" key={story.created_at}><b className="story-prompt">{story.prompt}</b>{story.story.slice(story.prompt.length + 1)}</li>)
         })}
       </ul>
     </>
