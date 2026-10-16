@@ -9,7 +9,6 @@ type GenerateStatus =
 
 export default function GenerateForm() {
   // TODO: disable form while server is asleep
-  // TODO: show generating state, and disable form while generating
   // TODO: differentiate error state (rate limited, timout, unknown/other)
   // TODO: abort generation after 30s
   // TODO: refresh StoriesFeed after new story returns
@@ -35,6 +34,7 @@ export default function GenerateForm() {
     })
     .then((newStory: string) => {
       setGenerateStatus({status: "finished", prompt: promptInputTrimmed, story: newStory})
+      setPromptInput("")
     })
     .catch((err: unknown) => {
       console.error(err)
@@ -42,6 +42,7 @@ export default function GenerateForm() {
     })
   }
 
+  const isStoryGenerating = generateStatus.status === "generating"
   return (
     <>
       <form className="generate-form" onSubmit={generateStory}>
@@ -49,8 +50,9 @@ export default function GenerateForm() {
           onChange={e => setPromptInput(e.target.value)}
           value={promptInput}
           placeholder="Story Prompt"
+          disabled={isStoryGenerating}
         />
-        <button>Submit</button>
+        <button disabled={isStoryGenerating}>{isStoryGenerating ? "Generating..." : "Submit"}</button>
       </form>
       {
         generateStatus.status === "finished" &&
