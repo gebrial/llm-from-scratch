@@ -8,7 +8,6 @@ type GenerateStatus =
   | { status: "error", error: string }
 
 export default function GenerateForm() {
-  // TODO: disable form while server is asleep
   // TODO: differentiate error state (rate limited, timout, unknown/other)
   // TODO: abort generation after 30s
   // TODO: refresh StoriesFeed after new story returns

@@ -3,7 +3,7 @@ import StoriesFeed from './StoriesFeed'
 import { API_URL } from './api'
 import GenerateForm from './GenerateForm'
 
-type ServerStatus = "checking" | "ready" | "asleep"
+export type ServerStatus = "checking" | "ready" | "asleep"
 type AbortReason = "timeout" | "cleanup"
 
 function App() {
@@ -40,10 +40,10 @@ function App() {
       <h1>TinyStories</h1>
       <p>A small GPT, trained from scratch, that tells short stories.</p>
     </header>
-    <GenerateForm />
+    {serverStatus === "ready" && <GenerateForm /> }
     { 
       serverStatus === "checking" ? <p className="status">Checking</p> : 
-      (serverStatus === "ready" ? <StoriesFeed /> : <p className="status">Asleep</p>)
+      (serverStatus === "ready" ? <StoriesFeed /> : <p className="status">Server Asleep</p>)
     }
     </main>
   )
