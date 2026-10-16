@@ -50,7 +50,10 @@ export default function GenerateForm() {
       </form>
       {
         generateStatus.status === "finished" &&
-        <p className="story story--new">{ generateStatus.story }</p>
+        <p className="story story--new">
+          <b className="story-prompt">{generateStatus.prompt}</b>
+          {generateStatus.story.slice(generateStatus.prompt.length + 1)}
+        </p>
       }
     </>
   )

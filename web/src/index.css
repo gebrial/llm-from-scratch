@@ -150,7 +150,12 @@ body {
 }
 
 .story-prompt {
-  /* TODO(human): style how the prompt stands out from the model's continuation */
+  padding: 0.1em 0.25em;
+  border-radius: 0.25em;
+  background: var(--accent-soft);
+  font-weight: 600;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .feed-heading {
