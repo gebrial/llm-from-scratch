@@ -8,10 +8,13 @@ type GenerateStatus =
   | { status: "error", error: string }
 
 export default function GenerateForm() {
+  // TODO: disable form while server is asleep
   // TODO: show generating state, and disable form while generating
   // TODO: differentiate error state (rate limited, timout, unknown/other)
   // TODO: abort generation after 30s
   // TODO: refresh StoriesFeed after new story returns
+  // TODO: make StoryText component that renders a story with the prompt in different formatting
+  // TODO: instead of assuming where to slice the story, compare it with the prompt to compute it
   const [promptInput, setPromptInput] = useState("")
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>({status: "none"})
 
@@ -19,10 +22,11 @@ export default function GenerateForm() {
     event.preventDefault()
     if (!promptInput.trim()) return
 
-    setGenerateStatus({status: "generating", prompt: promptInput})
+    const promptInputTrimmed = promptInput.trim();
+    setGenerateStatus({status: "generating", prompt: promptInputTrimmed})
     fetch(`${API_URL}/generate`, {
       method: "POST",
-      body: JSON.stringify({ prompt: promptInput }),
+      body: JSON.stringify({ prompt: promptInputTrimmed }),
       headers: { "Content-Type": "application/json" }
     })
     .then(res => {
@@ -30,7 +34,7 @@ export default function GenerateForm() {
       return res.json()
     })
     .then((newStory: string) => {
-      setGenerateStatus({status: "finished", prompt: promptInput, story: newStory})
+      setGenerateStatus({status: "finished", prompt: promptInputTrimmed, story: newStory})
     })
     .catch((err: unknown) => {
       console.error(err)
