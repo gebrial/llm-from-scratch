@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react"
 import { API_URL } from "./api"
+import Story from "./Story"
 
-type Story = {
+type StoryRow = {
     prompt: string,
     story: string,
     created_at: string
 }
 
 type StoriesResponse = {
-    stories: Story[]
+    stories: StoryRow[]
 }
 
 type StoriesStatus = 
   | { status: "loading" }
-  | { status: "ready", stories: Story[] }
+  | { status: "ready", stories: StoryRow[] }
   | { status: "failed" }
 
 export default function StoriesFeed() {
@@ -51,7 +52,8 @@ export default function StoriesFeed() {
       <h2 className="feed-heading">Recent stories</h2>
       <ul className="feed">
         {storiesStatus.stories.map(story => {
-          return (<li className="story" key={story.created_at}><b className="story-prompt">{story.prompt}</b>{story.story.slice(story.prompt.length + 1)}</li>)
+          // TODO use id for key instead of created_at datetime
+          return (<li className="story" key={story.created_at}><Story story={story.story} prompt={story.prompt}/></li>)
         })}
       </ul>
     </>

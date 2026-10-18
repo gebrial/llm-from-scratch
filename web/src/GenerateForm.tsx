@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { API_URL } from "./api"
+import Story from "./Story"
 
 type GenerateStatus = 
   | { status: "none" }
@@ -11,8 +12,6 @@ export default function GenerateForm() {
   // TODO: differentiate error state (rate limited, timout, unknown/other)
   // TODO: abort generation after 30s
   // TODO: refresh StoriesFeed after new story returns
-  // TODO: make StoryText component that renders a story with the prompt in different formatting
-  // TODO: instead of assuming where to slice the story, compare it with the prompt to compute it
   const [promptInput, setPromptInput] = useState("")
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>({status: "none"})
 
@@ -56,8 +55,7 @@ export default function GenerateForm() {
       {
         generateStatus.status === "finished" &&
         <p className="story story--new">
-          <b className="story-prompt">{generateStatus.prompt}</b>
-          {generateStatus.story.slice(generateStatus.prompt.length + 1)}
+          <Story story={generateStatus.story} prompt={generateStatus.prompt} />
         </p>
       }
     </>
