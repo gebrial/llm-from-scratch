@@ -8,10 +8,13 @@ type GenerateStatus =
   | { status: "finished", prompt: string, story: string}
   | { status: "error", error: string }
 
-export default function GenerateForm() {
+type GenerateFormProps = {
+  onGenerateStart: () => void,
+}
+
+export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
   // TODO: differentiate error state (rate limited, timout, unknown/other)
   // TODO: abort generation after 30s
-  // TODO: refresh StoriesFeed after new story returns
   const [promptInput, setPromptInput] = useState("")
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>({status: "none"})
 
@@ -21,6 +24,7 @@ export default function GenerateForm() {
 
     const promptInputTrimmed = promptInput.trim();
     setGenerateStatus({status: "generating", prompt: promptInputTrimmed})
+    onGenerateStart()
     fetch(`${API_URL}/generate`, {
       method: "POST",
       body: JSON.stringify({ prompt: promptInputTrimmed }),

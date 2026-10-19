@@ -17,7 +17,11 @@ type StoriesStatus =
   | { status: "ready", stories: StoryRow[] }
   | { status: "failed" }
 
-export default function StoriesFeed() {
+type StoriesFeedProps = {
+  refreshKey: number,
+}
+
+export default function StoriesFeed({ refreshKey }: StoriesFeedProps) {
   const [storiesStatus, setStoriesStatus] = useState<StoriesStatus>({status: "loading"})
 
   useEffect(() => {
@@ -35,14 +39,17 @@ export default function StoriesFeed() {
       .catch(err => {
         if (controller.signal.reason === "cleanup") return
         
-        setStoriesStatus({status: "failed"})
+        // don't overwrite existing stories in the feed if the next fetch fails
+        setStoriesStatus(prev => prev.status === "ready" ? prev : {status: "failed"})
+
         console.error(err)
       })
     
     return () => {
         controller.abort("cleanup")
     }
-  }, [])
+  // refreshKey: rerun when a new story is submitted
+  }, [refreshKey])
 
   if (storiesStatus.status === "loading") return <p className="status">Stories loading...</p>
   if (storiesStatus.status === "failed") return <p className="status">Couldn't load stories</p>

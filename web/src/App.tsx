@@ -8,6 +8,7 @@ type AbortReason = "timeout" | "cleanup"
 
 function App() {
   const [serverStatus, setServerStatus] = useState<ServerStatus>("checking")
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -40,10 +41,10 @@ function App() {
       <h1>TinyStories</h1>
       <p>A small GPT, trained from scratch, that tells short stories.</p>
     </header>
-    {serverStatus === "ready" && <GenerateForm /> }
+    {serverStatus === "ready" && <GenerateForm onGenerateStart={() => setFeedRefreshKey(k => k + 1)}/> }
     { 
       serverStatus === "checking" ? <p className="status">Checking</p> : 
-      (serverStatus === "ready" ? <StoriesFeed /> : <p className="status">Server Asleep</p>)
+      (serverStatus === "ready" ? <StoriesFeed refreshKey={feedRefreshKey} /> : <p className="status">Server Asleep</p>)
     }
     </main>
   )
