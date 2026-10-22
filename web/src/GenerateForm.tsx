@@ -12,9 +12,28 @@ type GenerateFormProps = {
   onGenerateStart: () => void,
 }
 
+const GENERATE_TIMEOUT_MS = 30_000
+
+function renderResult(generateStatus: GenerateStatus) {
+  switch(generateStatus.status) {
+    case "none":
+    case "generating":
+      return null
+    case "finished":
+      return (
+        <p className="story story--new">
+          <Story story={generateStatus.story} prompt={generateStatus.prompt} />
+        </p>
+      )
+    case "error":
+      return (
+        <p>Something went wrong.</p>
+      )
+  }
+}
+
 export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
   // TODO: differentiate error state (rate limited, timout, unknown/other)
-  // TODO: abort generation after 30s
   const [promptInput, setPromptInput] = useState("")
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>({status: "none"})
 
@@ -26,6 +45,7 @@ export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
     setGenerateStatus({status: "generating", prompt: promptInputTrimmed})
     onGenerateStart()
     fetch(`${API_URL}/generate`, {
+      signal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
       method: "POST",
       body: JSON.stringify({ prompt: promptInputTrimmed }),
       headers: { "Content-Type": "application/json" }
@@ -56,12 +76,7 @@ export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
         />
         <button disabled={isStoryGenerating}>{isStoryGenerating ? "Generating..." : "Submit"}</button>
       </form>
-      {
-        generateStatus.status === "finished" &&
-        <p className="story story--new">
-          <Story story={generateStatus.story} prompt={generateStatus.prompt} />
-        </p>
-      }
+      {renderResult(generateStatus)}
     </>
   )
 }
