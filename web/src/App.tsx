@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import StoriesFeed from './StoriesFeed'
 import { API_URL } from './api'
 import GenerateForm from './GenerateForm'
+import Footer from './Footer'
 
 export type ServerStatus = "checking" | "ready" | "asleep"
 type AbortReason = "timeout" | "cleanup"
@@ -36,17 +37,20 @@ function App() {
   }, [])
 
   return (
-    <main className="app">
-    <header className="app-header">
-      <h1>TinyStories</h1>
-      <p>A small GPT, trained from scratch, that tells short stories.</p>
-    </header>
-    {serverStatus === "ready" && <GenerateForm onGenerateStart={() => setFeedRefreshKey(k => k + 1)}/> }
-    { 
-      serverStatus === "checking" ? <p className="status">Checking</p> : 
-      (serverStatus === "ready" ? <StoriesFeed refreshKey={feedRefreshKey} /> : <p className="status">Server Asleep. <a href="mailto:gebrial@live.ca?subject=Please%20start%20the%20TinyStories%20server">Contact Sanjaya</a> to turn on.</p>)
-    }
-    </main>
+    <>
+      <main className="app">
+        <header className="app-header">
+          <h1>TinyStories</h1>
+          <p>A small GPT, trained from scratch, that tells short stories.</p>
+        </header>
+        {serverStatus === "ready" && <GenerateForm onGenerateStart={() => setFeedRefreshKey(k => k + 1)}/> }
+        { 
+          serverStatus === "checking" ? <p className="status">Checking</p> : 
+          (serverStatus === "ready" ? <StoriesFeed refreshKey={feedRefreshKey} /> : <p className="status">Server Asleep. <a href="mailto:gebrial@live.ca?subject=Please%20start%20the%20TinyStories%20server">Contact Sanjaya</a> to turn on.</p>)
+        }
+      </main>
+      <Footer />
+    </>
   )
 }
 
