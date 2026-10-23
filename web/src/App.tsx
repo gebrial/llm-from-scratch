@@ -44,7 +44,7 @@ function App() {
     {serverStatus === "ready" && <GenerateForm onGenerateStart={() => setFeedRefreshKey(k => k + 1)}/> }
     { 
       serverStatus === "checking" ? <p className="status">Checking</p> : 
-      (serverStatus === "ready" ? <StoriesFeed refreshKey={feedRefreshKey} /> : <p className="status">Server Asleep</p>)
+      (serverStatus === "ready" ? <StoriesFeed refreshKey={feedRefreshKey} /> : <p className="status">Server Asleep. <a href="mailto:gebrial@live.ca?subject=Please%20start%20the%20TinyStories%20server">Contact Sanjaya</a> to turn on.</p>)
     }
     </main>
   )

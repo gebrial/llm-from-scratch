@@ -184,3 +184,11 @@ body {
   text-align: center;
   font-style: italic;
 }
+
+.status a {
+  color: var(--accent);
+}
+
+.status a:hover {
+  color: var(--accent-hover);
+}
