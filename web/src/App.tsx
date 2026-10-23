@@ -42,6 +42,7 @@ function App() {
         <header className="app-header">
           <h1>TinyStories</h1>
           <p>A small GPT, trained from scratch, that tells short stories.</p>
+          <p className="app-stack">GPT from scratch · FastAPI · Postgres · Docker · AWS · React</p>
         </header>
         {serverStatus === "ready" && <GenerateForm onGenerateStart={() => setFeedRefreshKey(k => k + 1)}/> }
         { 
