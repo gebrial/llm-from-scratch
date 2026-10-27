@@ -119,6 +119,14 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A fixed box, so the button's width does not follow the digits' glyph widths. */
+.generate-form .elapsed {
+  display: inline-block;
+  min-width: 4.5ch;
+  text-align: left;
 }
 
 .generate-form button:hover {

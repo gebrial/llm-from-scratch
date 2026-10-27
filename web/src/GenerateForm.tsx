@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { API_URL } from "./api"
 import Story from "./Story"
+import ElapsedSeconds from "./ElapsedSeconds"
 
 type GenerateStatus = 
   | { status: "none" }
@@ -74,7 +75,9 @@ export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
           placeholder="Story Prompt"
           disabled={isStoryGenerating}
         />
-        <button disabled={isStoryGenerating}>{isStoryGenerating ? "Generating..." : "Submit"}</button>
+        <button disabled={isStoryGenerating}>
+          {isStoryGenerating ? <>Generating... <ElapsedSeconds /></> : "Submit"}
+        </button>
       </form>
       {renderResult(generateStatus)}
     </>
