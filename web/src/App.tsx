@@ -50,7 +50,7 @@ function App() {
           (serverStatus === "ready" ? <StoriesFeed refreshKey={feedRefreshKey} /> : <p className="status">Server Asleep. <a href="mailto:gebrial@live.ca?subject=Please%20start%20the%20TinyStories%20server">Contact Sanjaya</a> to turn on.</p>)
         }
       </main>
-      <Footer />
+      <Footer serverStatus={serverStatus} />
     </>
   )
 }
