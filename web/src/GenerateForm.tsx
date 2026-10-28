@@ -7,13 +7,29 @@ type GenerateStatus =
   | { status: "none" }
   | { status: "generating", prompt: string }
   | { status: "finished", prompt: string, story: string}
-  | { status: "error", error: string }
+  | { status: "error", error: GenerateError }
+
+type GenerateError = "rateLimited" | "timeout" | "other"
 
 type GenerateFormProps = {
   onGenerateStart: () => void,
 }
 
 const GENERATE_TIMEOUT_MS = 30_000
+
+const ERROR_MESSAGES: Record<GenerateError, string> = {
+  rateLimited: "You can make six stories per minute. Try again shortly.",
+  timeout: "The story took too long to generate. Try again in a moment.",
+  other: "Something went wrong.",
+}
+
+class RateLimitedError extends Error {}
+
+function toGenerateError(err: unknown): GenerateError {
+  if (err instanceof RateLimitedError) return "rateLimited"
+  if (err instanceof DOMException && err.name === "TimeoutError") return "timeout"
+  return "other"
+}
 
 function renderResult(generateStatus: GenerateStatus) {
   switch(generateStatus.status) {
@@ -28,13 +44,12 @@ function renderResult(generateStatus: GenerateStatus) {
       )
     case "error":
       return (
-        <p>Something went wrong.</p>
+        <p>{ERROR_MESSAGES[generateStatus.error]}</p>
       )
   }
 }
 
 export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
-  // TODO: differentiate error state (rate limited, timout, unknown/other)
   const [promptInput, setPromptInput] = useState("")
   const [generateStatus, setGenerateStatus] = useState<GenerateStatus>({status: "none"})
 
@@ -52,6 +67,7 @@ export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
       headers: { "Content-Type": "application/json" }
     })
     .then(res => {
+      if (res.status === 429) throw new RateLimitedError()
       if (!res.ok) throw new Error(`generate post failed: ${res.status}`)
       return res.json()
     })
@@ -61,7 +77,7 @@ export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
     })
     .catch((err: unknown) => {
       console.error(err)
-      setGenerateStatus({status: "error", error: String(err)})
+      setGenerateStatus({status: "error", error: toGenerateError(err)})
     })
   }
 
