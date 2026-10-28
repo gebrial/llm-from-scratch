@@ -24,16 +24,17 @@ for it.
 
 ## Committed
 
-**Next:** R2, then R9, R8, R3, R4, R5, R6, R7, R10.
+**Next:** R9, then R8, R3, R4, R5, R6, R7, R10.
 
 **Order, decided 2026-09-23.** The read path came first because it was small and
 local, and the deploy came before the UI because it was the measurement. Both
 are done as of 2026-09-29 (see "Done" below). The measurement did change things:
 the full checkpoint did not fit, and the fix was a first, small piece of R5.
 HTTPS (R1) came before the UI because the UI cannot call the API without it,
-and is done as of 2026-10-11. R9 and R8 were moved ahead of R3 on 2026-10-11:
-both are small next to it, build directly on R2, and R8 is the change visitors
-notice most. R7 stays last because it needs an automatic idle stop as well.
+and is done as of 2026-10-11; the UI (R2) is done as of 2026-10-28. R9 and R8
+were moved ahead of R3 on 2026-10-11: both are small next to it, build directly
+on R2, and R8 is the change visitors notice most. R7 stays last because it
+needs an automatic idle stop as well.
 
 **Constraint on every item below:** the `t3.small` is about $15/month running,
 so the instance stops when idle rather than running continuously. The budget was
@@ -41,36 +42,6 @@ written down as $5/month, but it was never a hard limit: on 2026-10-06 I
 accepted about $6/month in fixed costs, billed whether or not the instance runs
 (the account is past any free tier). That is the 30 GB root volume at roughly
 $2.40, against about 5 GB actually needed, and the Elastic IP at about $3.60.
-
-### R2. A React UI on GitHub Pages
-
-**Forces it:** Recorded in `INTERVIEW-HANDOFF.md` as a decision taken 2026-09-12.
-It supersedes the brief's line about frontend being out of scope, which was
-written earlier. Hosting on GitHub Pages was decided 2026-09-23.
-
-**Changes:** A second origin, which means the first real CORS failure in this
-project, which is worth capturing when it happens. FastAPI's `CORSMiddleware`
-with an allow-list containing the Pages origin.
-
-**Why Pages and not the same instance:** the frontend stays up while the
-instance is stopped. With stop-when-idle, most visitors will find the API
-asleep, so the UI should say so rather than time out. This covers most of the
-deferred static failover page below. Serving the UI from the instance instead
-would avoid CORS, but would still need HTTPS and would go down with the API.
-
-**Decided 2026-10-11** (reasons in `DECISIONS.md`):
-
-- A folder in this repo; Vite + React + TypeScript, no framework.
-- The UI takes `https://stories.gebrial.ca`, the CORS allow-list entry. The API
-  moves to `stories-api.gebrial.ca` first; then the `stories` A record becomes a
-  CNAME to `gebrial.github.io` and leaves the Caddyfile. `gebrial.ca` is
-  verified in GitHub against subdomain takeover.
-- The API URL is build-time config, not a literal.
-- Failure cases: `/ping` with a short timeout on load, and an "asleep" message
-  with the form disabled; one request for the minute-long generation with an
-  elapsed counter and an abort ceiling; a plain message on 429; one generic
-  error for everything else. The busy guard (R4) adds its own case.
-- Added 2026-10-13: the stories feed from `GET /stories`, and styling.
 
 ### R3. Auth (OAuth)
 
@@ -370,3 +341,12 @@ a plain-HTTP API. The API is now at `https://stories.gebrial.ca`:
   `X-Forwarded-For`, verified by the access log showing my public IP rather
   than a container address, and a second `/generate` within a minute getting a
   429.
+
+**R2. A React UI on GitHub Pages**, done 2026-10-28. Vite + React + TypeScript
+in `web/`, deployed to `https://stories.gebrial.ca` by
+`.github/workflows/pages.yml`, so it stays up while the instance is stopped,
+which serving it from the instance would not. The API moved to
+`stories-api.gebrial.ca` and allows the UI's origin through CORS. The UI pings
+`/ping` on load and says the API is asleep rather than timing out, shows the
+stories feed, and generates with an elapsed counter, a 30s ceiling, and separate
+messages for a 429, a timeout and anything else. R7 to R9 grew out of it.
