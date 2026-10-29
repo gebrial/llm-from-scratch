@@ -24,7 +24,7 @@ for it.
 
 ## Committed
 
-**Next:** R9, then R8, R3, R4, R5, R6, R7, R10.
+**Next:** R9, then R3, R4, R5, R6, R7, R10.
 
 **Order, decided 2026-09-23.** The read path came first because it was small and
 local, and the deploy came before the UI because it was the measurement. Both
@@ -33,8 +33,8 @@ the full checkpoint did not fit, and the fix was a first, small piece of R5.
 HTTPS (R1) came before the UI because the UI cannot call the API without it,
 and is done as of 2026-10-11; the UI (R2) is done as of 2026-10-28. R9 and R8
 were moved ahead of R3 on 2026-10-11: both are small next to it, build directly
-on R2, and R8 is the change visitors notice most. R7 stays last because it
-needs an automatic idle stop as well.
+on R2, and R8 is the change visitors notice most. R8 went first and is done as
+of 2026-10-29. R7 stays last because it needs an automatic idle stop as well.
 
 **Constraint on every item below:** the `t3.small` is about $15/month running,
 so the instance stops when idle rather than running continuously. The budget was
@@ -168,21 +168,6 @@ instance, such as a Lambda behind a Function URL, with IAM scoped to that one
 instance. The instance is stopped by hand in the console today, so R7 also needs
 an automatic idle stop. Worst-case abuse is the instance running all month,
 about $15, since CPU credits are standard.
-
-### R8. Stream generated stories
-
-**Forces it:** Decided 2026-10-11, from R2, which waits a minute for one
-response.
-
-**Changes:** Generation becomes a generator and the API streams tokens (SSE or
-`StreamingResponse`); the UI appends them as they arrive. Errors after the
-`200` has gone out must be signalled in the body, and the database write moves
-to the end of the stream.
-
-*A client disconnecting must not stop generation, 2026-10-13: the story is
-stored either way. `StreamingResponse` stops iterating on disconnect, so
-generation runs apart from the response (e.g. a thread feeding a queue), and the
-R10 guard is released when generation ends, not when the stream does.*
 
 ### R9. A countdown on 429
 
@@ -350,3 +335,14 @@ which serving it from the instance would not. The API moved to
 `/ping` on load and says the API is asleep rather than timing out, shows the
 stories feed, and generates with an elapsed counter, a 30s ceiling, and separate
 messages for a 429, a timeout and anything else. R7 to R9 grew out of it.
+
+**R8. Streaming generated stories**, done 2026-10-29. `POST /generate/stream`
+sends the continuation as NDJSON, a `token` line per token and then `done` or
+`error`. `/generate` stays beside it, sharing one rate limit, so each version of
+the UI works with either API during a deploy. Generation and the save run in
+their own thread, so a story is stored even if the visitor leaves, and `done`
+is only sent once it is. When R10 adds a guard, it is released where that thread
+ends. The UI fills the story in as it arrives, with a 15s idle timeout in place
+of the 30s ceiling. Reasons in `DECISIONS.md`, "Stream stories as NDJSON on a
+new route". Found on the way: non-ASCII characters in prompts are dropped
+(issue #1).
