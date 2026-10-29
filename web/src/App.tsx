@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import StoriesFeed from './components/StoriesFeed'
-import { API_URL } from './api/api'
+import { API_URL } from './api/config'
 import GenerateForm from './components/GenerateForm'
 import Footer from './components/Footer'
 

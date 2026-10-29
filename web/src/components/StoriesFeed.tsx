@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { API_URL } from "../api/api"
+import { API_URL } from "../api/config"
 import Story from "./Story"
 
 type StoryRow = {

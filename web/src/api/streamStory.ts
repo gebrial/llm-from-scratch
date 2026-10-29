@@ -1,7 +1,7 @@
 // Reading POST /generate/stream: one JSON message per line (NDJSON), see
 // DECISIONS.md, "Stream stories as NDJSON on a new route".
 
-import { API_URL } from "./api"
+import { API_URL } from "./config"
 
 // One line of the /generate/stream body.
 type StreamMessage =
