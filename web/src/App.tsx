@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import StoriesFeed from './StoriesFeed'
-import { API_URL } from './api'
-import GenerateForm from './GenerateForm'
-import Footer from './Footer'
+import StoriesFeed from './components/StoriesFeed'
+import { API_URL } from './api/api'
+import GenerateForm from './components/GenerateForm'
+import Footer from './components/Footer'
 
 export type ServerStatus = "checking" | "ready" | "asleep"
 type AbortReason = "timeout" | "cleanup"

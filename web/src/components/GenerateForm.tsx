@@ -1,7 +1,7 @@
 import { useState } from "react"
 import Story from "./Story"
 import ElapsedSeconds from "./ElapsedSeconds"
-import { RateLimitedError, streamStory } from "./streamStory"
+import { RateLimitedError, streamStory } from "../api/streamStory"
 
 // The continuation is kept on an error, so text that already arrived stays on screen.
 type GenerateStatus =

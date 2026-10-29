@@ -1,7 +1,7 @@
 import { FaBook, FaCode, FaFilePdf, FaGithub, FaLinkedin } from 'react-icons/fa'
 import { MdEmail } from 'react-icons/md'
-import { API_URL } from './api'
-import type { ServerStatus } from './App'
+import { API_URL } from '../api/api'
+import type { ServerStatus } from '../App'
 
 interface FooterProps {
   serverStatus: ServerStatus
