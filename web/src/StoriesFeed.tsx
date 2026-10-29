@@ -60,7 +60,9 @@ export default function StoriesFeed({ refreshKey }: StoriesFeedProps) {
       <ul className="feed">
         {storiesStatus.stories.map(story => {
           // TODO use id for key instead of created_at datetime
-          return (<li className="story" key={story.created_at}><Story story={story.story} prompt={story.prompt}/></li>)
+          // TODO: instead of assuming where to slice the story, compare it with the prompt to compute the continuation
+          const continuation = story.story.slice(story.prompt.length + 1)
+          return (<li className="story" key={story.created_at}><Story prompt={story.prompt} continuation={continuation}/></li>)
         })}
       </ul>
     </>

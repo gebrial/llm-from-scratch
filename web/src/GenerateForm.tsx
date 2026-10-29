@@ -1,13 +1,14 @@
 import { useState } from "react"
-import { API_URL } from "./api"
 import Story from "./Story"
 import ElapsedSeconds from "./ElapsedSeconds"
+import { RateLimitedError, streamStory } from "./streamStory"
 
-type GenerateStatus = 
+// The continuation is kept on an error, so text that already arrived stays on screen.
+type GenerateStatus =
   | { status: "none" }
-  | { status: "generating", prompt: string }
-  | { status: "finished", prompt: string, story: string}
-  | { status: "error", error: GenerateError }
+  | { status: "generating", prompt: string, continuation: string }
+  | { status: "finished", prompt: string, continuation: string }
+  | { status: "error", error: GenerateError, prompt: string, continuation: string }
 
 type GenerateError = "rateLimited" | "timeout" | "other"
 
@@ -15,15 +16,11 @@ type GenerateFormProps = {
   onGenerateStart: () => void,
 }
 
-const GENERATE_TIMEOUT_MS = 30_000
-
 const ERROR_MESSAGES: Record<GenerateError, string> = {
   rateLimited: "You can make six stories per minute. Try again shortly.",
   timeout: "The story took too long to generate. Try again in a moment.",
   other: "Something went wrong.",
 }
-
-class RateLimitedError extends Error {}
 
 function toGenerateError(err: unknown): GenerateError {
   if (err instanceof RateLimitedError) return "rateLimited"
@@ -32,21 +29,16 @@ function toGenerateError(err: unknown): GenerateError {
 }
 
 function renderResult(generateStatus: GenerateStatus) {
-  switch(generateStatus.status) {
-    case "none":
-    case "generating":
-      return null
-    case "finished":
-      return (
-        <p className="story story--new">
-          <Story story={generateStatus.story} prompt={generateStatus.prompt} />
-        </p>
-      )
-    case "error":
-      return (
-        <p>{ERROR_MESSAGES[generateStatus.error]}</p>
-      )
-  }
+  if (generateStatus.status === "none") return null
+  const { prompt, continuation } = generateStatus
+  return (
+    <>
+      <p className="story story--new">
+        <Story prompt={prompt} continuation={continuation} />
+      </p>
+      {generateStatus.status === "error" && <p>{ERROR_MESSAGES[generateStatus.error]}</p>}
+    </>
+  )
 }
 
 export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
@@ -57,27 +49,21 @@ export default function GenerateForm({ onGenerateStart }: GenerateFormProps) {
     event.preventDefault()
     if (!promptInput.trim()) return
 
-    const promptInputTrimmed = promptInput.trim();
-    setGenerateStatus({status: "generating", prompt: promptInputTrimmed})
+    const prompt = promptInput.trim();
+    let continuation = ""
+    setGenerateStatus({status: "generating", prompt, continuation})
     onGenerateStart()
-    fetch(`${API_URL}/generate`, {
-      signal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
-      method: "POST",
-      body: JSON.stringify({ prompt: promptInputTrimmed }),
-      headers: { "Content-Type": "application/json" }
+    streamStory(prompt, text => {
+      continuation += text
+      setGenerateStatus({status: "generating", prompt, continuation})
     })
-    .then(res => {
-      if (res.status === 429) throw new RateLimitedError()
-      if (!res.ok) throw new Error(`generate post failed: ${res.status}`)
-      return res.json()
-    })
-    .then((newStory: string) => {
-      setGenerateStatus({status: "finished", prompt: promptInputTrimmed, story: newStory})
+    .then(() => {
+      setGenerateStatus({status: "finished", prompt, continuation})
       setPromptInput("")
     })
     .catch((err: unknown) => {
       console.error(err)
-      setGenerateStatus({status: "error", error: toGenerateError(err)})
+      setGenerateStatus({status: "error", error: toGenerateError(err), prompt, continuation})
     })
   }
 
