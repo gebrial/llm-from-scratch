@@ -102,10 +102,20 @@ def top_p_sampling(model, tokenizer, prompt, top_p=0.95, temperature=1.0, max_le
     Nucleus sampling with temperature. Empirically produces more varied, higher-quality
     completions than beam_search for this model.
     """
-    device = next(model.parameters()).device
     eot_token_id = tokenizer.encode(eot_token).ids[0]
-
     prompt_tokens = tokenizer.encode(prompt).ids
+    new_ids = list(top_p_token_ids(model, prompt_tokens, eot_token_id, top_p=top_p,
+                                   temperature=temperature, max_length=max_length))
+    return tokenizer.decode(prompt_tokens + new_ids, skip_special_tokens=False)
+
+
+def top_p_token_ids(model, prompt_tokens, eot_token_id, top_p=0.95, temperature=1.0, max_length=512):
+    """
+    The sampling loop behind top_p_sampling, yielding each continuation token ID as
+    it is sampled, so a caller can stream the story. The end-of-text token is not
+    yielded.
+    """
+    device = next(model.parameters()).device
     input_ids = torch.tensor(prompt_tokens, device=device).unsqueeze(0)
 
     # the first pass runs the whole prompt and fills the KV cache; every pass after
@@ -132,12 +142,7 @@ def top_p_sampling(model, tokenizer, prompt, top_p=0.95, temperature=1.0, max_le
         sampled_token = sorted_indices.gather(-1, sampled_idx).unsqueeze(0)
         input_ids = torch.cat([input_ids, sampled_token], dim=-1)
         if sampled_token.item() == eot_token_id:
-            break
+            return
+        yield sampled_token.item()
         new_tokens = sampled_token
         positions = torch.tensor([[input_ids.size(1) - 1]], device=device)
-
-    output_tokens = input_ids.squeeze(0).tolist()
-    # drop the trailing end-of-text token, if generation stopped because of one
-    if output_tokens[-1] == eot_token_id:
-        output_tokens = output_tokens[:-1]
-    return tokenizer.decode(output_tokens, skip_special_tokens=False)
