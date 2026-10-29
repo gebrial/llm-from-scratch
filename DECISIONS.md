@@ -523,3 +523,28 @@ only `db` and `api`; the deploy command is unchanged.
 **Why:** Caddy is useless locally, and would keep failing to get a certificate
 for a domain that does not point at the machine. A profile makes the safe
 command the default one, rather than relying on remembering to name services.
+
+## 2026-10-28 — Stream stories as NDJSON on a new route (R8)
+
+**Chose:** `POST /generate/stream`, beside `/generate`, which stays. Both share
+one rate limit (`shared_limit`, scope `generate`). The body is
+`application/x-ndjson`: one JSON object per line, typed by a `type` field
+(`token`, `error`, `done`). A `token` carries the text new since the last one:
+the whole sequence so far is decoded and only the new suffix sent, holding back
+a trailing incomplete character (`�`), so the tokens joined are exactly the
+stored continuation.
+
+**Considered:** Replacing `/generate`. Separate limits per route. SSE. Raw text.
+Decoding each token alone. Sending token IDs.
+
+**Why:** The UI deploys on push and the API by hand, so for a while one is
+newer than the other; a new route keeps both versions of the UI working.
+Separate limits would double the effective one, on the same CPU. SSE's value is
+`EventSource`, which reconnects and resumes, but only over GET; generating is a
+POST, so the UI parses either format itself, and NDJSON frames the same
+messages with less format. Raw text has no place for an error once the `200` is
+sent. Byte-level BPE can split a character across two tokens, so decoding one
+at a time can stream text that is never stored.
+
+**Open:** that Caddy passes the stream through unbuffered, to be checked on the
+instance.
