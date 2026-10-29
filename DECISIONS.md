@@ -529,13 +529,12 @@ command the default one, rather than relying on remembering to name services.
 **Chose:** `POST /generate/stream`, beside `/generate`, which stays. Both share
 one rate limit (`shared_limit`, scope `generate`). The body is
 `application/x-ndjson`: one JSON object per line, typed by a `type` field
-(`token`, `error`, `done`). A `token` carries the text new since the last one:
-the whole sequence so far is decoded and only the new suffix sent, holding back
-a trailing incomplete character (`�`), so the tokens joined are exactly the
-stored continuation.
+(`token`, `error`, `done`). A `token` carries one token's text, decoded on its
+own.
 
 **Considered:** Replacing `/generate`. Separate limits per route. SSE. Raw text.
-Decoding each token alone. Sending token IDs.
+Decoding the whole sequence each step and sending the new suffix. Sending token
+IDs.
 
 **Why:** The UI deploys on push and the API by hand, so for a while one is
 newer than the other; a new route keeps both versions of the UI working.
@@ -543,8 +542,9 @@ Separate limits would double the effective one, on the same CPU. SSE's value is
 `EventSource`, which reconnects and resumes, but only over GET; generating is a
 POST, so the UI parses either format itself, and NDJSON frames the same
 messages with less format. Raw text has no place for an error once the `200` is
-sent. Byte-level BPE can split a character across two tokens, so decoding one
-at a time can stream text that is never stored.
+sent. Byte-level BPE can split a character across two tokens, which would
+stream a `�` that is never stored, but none of this vocabulary's 4096 tokens
+is non-ASCII (checked 2026-10-28), so every token decodes to whole characters.
 
 **Open:** that Caddy passes the stream through unbuffered, to be checked on the
 instance.

@@ -143,6 +143,6 @@ def top_p_token_ids(model, prompt_tokens, eot_token_id, top_p=0.95, temperature=
         input_ids = torch.cat([input_ids, sampled_token], dim=-1)
         if sampled_token.item() == eot_token_id:
             return
-        yield sampled_token.item()
+        yield int(sampled_token.item())
         new_tokens = sampled_token
         positions = torch.tensor([[input_ids.size(1) - 1]], device=device)
