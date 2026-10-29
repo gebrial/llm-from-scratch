@@ -1,10 +1,15 @@
+import json
+import logging
 import os
+import queue
+import threading
 
 import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Annotated
 from datetime import datetime
@@ -15,7 +20,12 @@ from slowapi.errors import RateLimitExceeded
 
 load_dotenv()
 
+logger = logging.getLogger("uvicorn.error")
+
 limiter = Limiter(key_func=get_remote_address)
+# /generate and /generate/stream share one budget: both use the same CPU, and
+# separate limits would double the effective one.
+GENERATE_LIMIT = "6/minute"
 app = FastAPI()
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
@@ -78,11 +88,48 @@ class GenerateRequest(BaseModel):
     prompt: str
 
 @app.post("/generate")
-@limiter.limit("6/minute")
+@limiter.shared_limit(GENERATE_LIMIT, scope="generate")
 def generate(request: Request, req: GenerateRequest) -> str:
     story = model_service.generate(req.prompt)
     save_story(req.prompt, story)
     return story
+
+
+def generate_and_save(prompt, messages: queue.Queue):
+    """
+    Runs in its own thread, so generation and the save finish even if the client
+    disconnects: StreamingResponse stops reading on disconnect, but nothing here
+    depends on it reading. Only a finished story is stored, and "done" is sent
+    after the save, so it means the story is in the feed.
+    """
+    try:
+        pieces = []
+        for piece in model_service.stream(prompt):
+            pieces.append(piece)
+            messages.put({"type": "token", "text": piece})
+        save_story(prompt, model_service.decoded_prompt(prompt) + "".join(pieces))
+        messages.put({"type": "done"})
+    except Exception:
+        # the exception can name paths or SQL, so the client only gets a fixed message
+        logger.exception("streamed generation failed")
+        messages.put({"type": "error", "message": "generation failed"})
+
+
+@app.post("/generate/stream")
+@limiter.shared_limit(GENERATE_LIMIT, scope="generate")
+def generate_stream(request: Request, req: GenerateRequest) -> StreamingResponse:
+    """The continuation as NDJSON: a "token" line per token, then "done" or "error"."""
+    messages: queue.Queue = queue.Queue()
+    threading.Thread(target=generate_and_save, args=(req.prompt, messages)).start()
+
+    def ndjson_lines():
+        while True:
+            message = messages.get()
+            yield json.dumps(message) + "\n"
+            if message["type"] != "token":
+                return
+
+    return StreamingResponse(ndjson_lines(), media_type="application/x-ndjson")
 
 class Story(BaseModel):
     prompt: str

@@ -73,11 +73,19 @@ class ModelService:
                                   temperature=temperature, topk=topk, output_only=True)
         raise ValueError(f"Unknown method: {method!r} (expected 'top_p', 'beam', or 'greedy')")
 
+    def decoded_prompt(self, prompt):
+        """
+        The prompt as generate() puts it at the start of a story: stripped, encoded
+        and decoded, which adds a leading space and drops anything the vocabulary
+        cannot encode.
+        """
+        return self.tokenizer.decode(self.tokenizer.encode(prompt.rstrip()).ids, skip_special_tokens=False)
+
     def stream(self, prompt, max_length=512, temperature=1.0, top_p=0.95):
         """
         Yields the continuation's text one token at a time, top-p only. Unlike
-        generate(), the prompt is not included: the prompt decoded + the pieces joined
-        is what generate() would return for the same seed.
+        generate(), the prompt is not included: decoded_prompt(prompt) + the pieces
+        joined is what generate() would return for the same seed.
         """
         prompt = prompt.rstrip()
         prompt_tokens = self.tokenizer.encode(prompt).ids
