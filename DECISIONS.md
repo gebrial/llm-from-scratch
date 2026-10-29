@@ -546,5 +546,5 @@ sent. Byte-level BPE can split a character across two tokens, which would
 stream a `�` that is never stored, but none of this vocabulary's 4096 tokens
 is non-ASCII (checked 2026-10-28), so every token decodes to whole characters.
 
-**Open:** that Caddy passes the stream through unbuffered, to be checked on the
-instance.
+Caddy passes the stream through unbuffered: checked on the instance 2026-10-29,
+the first token at 0.75s and `done` at 17.8s.
